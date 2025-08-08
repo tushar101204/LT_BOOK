@@ -103,7 +103,7 @@ const AboutUpdateForm = () => {
   const callAboutPage = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5010/about`,
+        `${REACT_APP_SERVER_URL}/about`,
         {
           withCredentials: true,
           headers: {
