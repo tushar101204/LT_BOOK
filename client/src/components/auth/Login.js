@@ -64,7 +64,7 @@ const Login = () => {
       // const response = await axios.post("http://localhost:9002/login", {
 
       console.log(process.env.REACT_APP_SERVER_URL);
-       const response = await axios.post("http://localhost:5010/login", {
+       const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/login`, {
         
         email,
         password,
