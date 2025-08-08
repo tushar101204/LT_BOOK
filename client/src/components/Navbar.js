@@ -1,208 +1,166 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react"
-import { Link, useLocation } from "react-router-dom"
-import { UserContext } from "../App"
-import logo from "../assets/lnmiit.png"
+import React, { useContext   } from "react";
+import { Link } from "react-router-dom";
+import { UserContext } from "../App";
+import logo from '../assets/lnmiit.png'
+
 
 const Navbar = () => {
   const { state } = useContext(UserContext)
-  const location = useLocation()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const closeBtnRef = useRef(null)
-  const overlayRef = useRef(null)
 
-  // Focus close button on open, close on Escape
-  useEffect(() => {
-    function onKeyDown(e) {
-      if (e.key === "Escape") setMenuOpen(false)
-    }
-    if (menuOpen) {
-      closeBtnRef.current?.focus()
-      document.addEventListener("keydown", onKeyDown)
-    }
-    return () => document.removeEventListener("keydown", onKeyDown)
-  }, [menuOpen])
+  // const [showMenu, setShowMenu] = useState(false);
 
-  // Click outside overlay to close
-  useEffect(() => {
-    function handleOverlayClick(e) {
-      if (e.target === overlayRef.current) setMenuOpen(false)
-    }
-    if (menuOpen) {
-      overlayRef.current?.addEventListener("click", handleOverlayClick)
-    }
-    return () => overlayRef.current?.removeEventListener("click", handleOverlayClick)
-  }, [menuOpen])
+  const toggleMenu = () => {
+    //consolelog("toggle called");
+    document.getElementById('menu').classList.toggle('hidden');
+    
+    // setShowMenu(!showMenu);
+  };
+  //consolelog(state);
 
-  const roleItems = useMemo(() => {
-    const userType = state?.userType
-    if (userType === "admin") {
-      return [
-        { to: "/halls", label: "Halls" },
-        { to: "/user", label: "Users" },
-      ]
-    }
-    if (userType === "faculty") {
-      return [{ to: "/bookings", label: "Bookings" }]
-    }
-    return [{ to: "/halls", label: "Halls" }]
-  }, [state?.userType])
+// const dashboard = userType.charAt(0).toUpperCase() + userType.slice(1);
+// //consolelog(dashboard); 
 
-  const baseItems = useMemo(
-    () => [
-      { to: "/", label: "Home" },
-      { to: "/events", label: "Events" },
-      { to: "/calendar", label: "Calendar" },
-      ...roleItems,
-      { to: "/profile", label: "Profile" },
-    ],
-    [roleItems]
-  )
+// "Admin"
 
-  function NavItem({ to, label, onClick }) {
-    const isActive = location.pathname === to
-    const base =
-      "px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-300"
-    const active =
-      "text-gray-900 bg-gray-100"
-    const inactive =
-      "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+const RenderUser = () => {
+  if (state.userType === "admin") {
     return (
-      <Link
-        to={to}
-        onClick={onClick}
-        className={`${base} ${isActive ? active : inactive}`}
-        aria-current={isActive ? "page" : undefined}
-      >
-        {label}
-      </Link>
-    )
+      <div className="flex space-x-8"> {/* Flex container for horizontal alignment */}
+      <Link to="/halls">Halls</Link>
+      <Link to="/user">Users</Link>
+    </div>
+      
+    );
+  } else if (state.userType === "faculty") {
+    return (
+      <div>
+        <Link to="/bookings">Bookings</Link>
+      </div>
+    );
+  } else {
+    return (
+      <div>
+        <Link to="/halls">Halls</Link>
+      </div>
+    );
   }
+};
+// const jwtoken = getCookie('jwtoken');
 
-  function AuthButton() {
-    if (state?.user) {
+
+  const RenderMenu = () => {
+
+    if (state.user) {
+        
       return (
-        <Link to="/logout">
-          <button
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-300"
-            type="button"
-          >
-            Logout
-          </button>
-        </Link>
+        <>
+
+          {/* <Link to="/logout" className="mr-5 hover:text-gray-900">Logout</Link> */}
+          <Link to="/logout">
+            <button className="focus:outline-none lg:text-lg lg:font-bold focus:ring-2 focus:ring-offset-2 focus:ring-indigo-700  md:block bg-transparent transition duration-150 ease-in-out hover:bg-gray-200 rounded border border-indigo-700 text-indigo-700  px-8 py-1 sm:py-3 text-sm">Logout</button>
+          </Link>
+        </>
+      )
+    } else {
+
+      return (
+
+        <>
+        
+          <Link to="/login">
+            <button className="focus:outline-none lg:text-lg font-bold focus:ring-2 focus:ring-offset-2 focus:ring-indigo-700  md:block bg-transparent transition duration-150 ease-in-out hover:bg-gray-200 rounded border border-indigo-700 text-indigo-700  px-8 py-1 sm:py-3 text-sm">Sign In / Sign Up</button>
+          </Link>
+          {/* <button className="focus:outline-none lg:text-lg lg:font-bold focus:ring-2 focus:ring-offset-2 focus:ring-indigo-700 hidden md:block bg-transparent transition duration-150 ease-in-out hover:bg-gray-200 rounded border border-indigo-700 text-indigo-700  sm:px-8 py-1 sm:py-3 text-sm">Sign In</button> */}
+
+          {/* <Link to="/login" className="mr-5 hover:text-gray-900">Login</Link>
+            <Link to="/signup" className="mr-5 hover:text-gray-900">Sign Up</Link> */}
+        </>
       )
     }
-    return (
-      <Link to="/login">
-        <button
-          className="inline-flex items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-300"
-          type="button"
-        >
-          Sign In / Sign Up
-        </button>
-      </Link>
-    )
   }
 
-  return (
-    <>
-      <nav
-        className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60"
-        role="navigation"
-        aria-label="Main"
-      >
-        <div className="container mx-auto flex items-center justify-between px-6 py-4">
-          {/* Brand */}
-          <Link to="/" className="flex items-center gap-3" aria-label="Home">
-            <img className="w-24 md:w-36" src={logo || "/placeholder.svg"} alt="LNMIIT logo" />
+
+  return (<>
+
+    <nav className="w-full border-b">
+      <div className="py-5 md:py-0 container mx-auto px-6 flex items-center justify-between">
+          <Link to={"/"}>
+        <div aria-label="Home. logo" className="flex justify-between items-center" role="img">
+          {/* <h1>asd</h1> */}
+           {/* <img className="w-12 md:w-auto" src="https://tuk-cdn.s3.amazonaws.com/can-uploader/centre_aligned_simple-Svg1.svg" alt="logo" /> */}
+                      <img className=" w-24 md:w-36" src={logo} alt="logo" />
+
+             {/* <h1 className="text-xl sm:border-l-2  sm:text-3xl md:text-4xl lg:text-3xl xl:text-4xl text-center text-gray-800 font-black leading-7 ml-3 md:leading-10">
+               Book  <span className="text-indigo-700">It</span> </h1>
+          */}
+        </div>
           </Link>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex md:items-center md:gap-2">
-            {baseItems.map((item) => (
-              <NavItem key={item.to} to={item.to} label={item.label} />
-            ))}
-          </div>
-
-          {/* Right side - Auth */}
-          <div className="hidden md:block">
-            <AuthButton />
-          </div>
-
-          {/* Mobile menu button */}
-          <button
-            onClick={() => setMenuOpen(true)}
-            className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-300 md:hidden"
-            aria-label="Open main menu"
-            aria-controls="mobile-menu"
-            aria-expanded={menuOpen}
-            type="button"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" fill="none">
-              <path stroke="none" d="M0 0h24v24H0z" />
-              <line x1="4" y1="6" x2="20" y2="6" />
-              <line x1="4" y1="12" x2="20" y2="12" />
-              <line x1="4" y1="18" x2="20" y2="18" />
+        <div>
+          <button onClick={toggleMenu} className="sm:block md:hidden text-gray-500 hover:text-gray-700 focus:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+            <svg aria-haspopup="true" aria-label="open Main Menu" xmlns="http://www.w3.org/2000/svg" className="md:hidden icon icon-tabler icon-tabler-menu" width="32" height="32" viewBox="0 0 32 32" strokeWidth="1.5" stroke="#2c3e50" fill="none" strokeLinecap="round">
+              <path stroke="none" d="M0 0h24v24H0z"></path>
+              <line x1="4" y1="8" x2="20" y2="8"></line>
+              <line x1="4" y1="16" x2="20" y2="16"></line>
+              <line x1="4" y1="24" x2="20" y2="24"></line>
             </svg>
           </button>
-        </div>
+          <div id="menu" className="md:block lg:block hidden">
+            <button onClick={toggleMenu} className="block md:hidden lg:hidden text-gray-500 hover:text-gray-700 focus:text-gray-700 fixed focus:outline-none focus:ring-2 focus:ring-gray-500 z-30 top-0 mt-6">
+              <svg aria-label="close main menu" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#2c3e50" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+                
+              </svg>
+            </button>
+            
+            <ul onClick={toggleMenu} className="flex text-3xl md:text-base items-center py-10 md:flex flex-col md:flex-row justify-center fixed md:relative top-0 bottom-0 left-0 right-0 bg-white md:bg-transparent z-20">
+            
 
-        {/* Mobile overlay + drawer */}
-        {menuOpen && (
-          <div
-            ref={overlayRef}
-            className="fixed inset-0 z-50 bg-black/40 md:hidden"
-            aria-hidden={!menuOpen}
-          >
-            <div
-              id="mobile-menu"
-              className="absolute inset-y-0 right-0 w-full max-w-xs bg-white shadow-xl focus:outline-none"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Mobile menu"
-            >
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <img className="w-10" src={logo || "/placeholder.svg"} alt="LNMIIT logo" />
-                  <span className="text-base font-semibold text-gray-900">Menu</span>
-                </div>
-                <button
-                  ref={closeBtnRef}
-                  onClick={() => setMenuOpen(false)}
-                  className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-300"
-                  aria-label="Close menu"
-                  type="button"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" fill="none">
-                    <path stroke="none" d="M0 0h24v24H0z" />
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
+              <li className="text-gray-700 hover:text-gray-900 cursor-pointer text-base lg:text-lg pt-10 md:pt-0">
+                <Link to="/">Home</Link>
+              </li>
 
-              <div className="px-4 py-4">
-                <ul className="flex flex-col gap-1">
-                  {baseItems.map((item) => (
-                    <li key={item.to}>
-                      <NavItem
-                        to={item.to}
-                        label={item.label}
-                        onClick={() => setMenuOpen(false)}
-                      />
-                    </li>
-                  ))}
-                </ul>
 
-                <div className="mt-4 border-t pt-4">
-                  <AuthButton />
-                </div>
-              </div>
-            </div>
+              <li className="text-gray-700 hover:text-gray-900 cursor-pointer text-base lg:text-lg pt-10 md:pt-0 md:ml-5 lg:ml-10">
+                <Link to="/events">Events</Link>
+              </li>
+
+              <li className="text-gray-700 hover:text-gray-900 cursor-pointer text-base lg:text-lg pt-10 md:pt-0 md:ml-5 lg:ml-10">
+                <Link to="/calendar">Calendar</Link>
+              </li>
+
+              <li className="text-gray-700 hover:text-gray-900 cursor-pointer text-base lg:text-lg pt-10 md:pt-0 md:ml-5 lg:ml-10">
+                {/* <Link to="/bookings">Bookings</Link> */}
+                <RenderUser/>
+              </li>
+
+              {/* <li className="text-gray-700 hover:text-gray-900 cursor-pointer text-base lg:text-lg pt-10 md:pt-0 md:ml-5 lg:ml-10">
+                <Link to="/contact">Contact</Link>
+              </li> */}
+              <li className="text-gray-700 hover:text-gray-900 cursor-pointer text-base lg:text-lg pt-10 md:pt-0 md:ml-5 lg:ml-10">
+                <Link to="/profile">Profile</Link>
+              </li>
+            </ul>
           </div>
-        )}
-      </nav>
-    </>
-  )
-}
+        </div>
+        <RenderMenu />
 
-export default Navbar
+        
+
+      </div>
+    </nav>
+
+
+
+
+
+
+
+  </>
+
+  )
+};
+
+export default Navbar;
