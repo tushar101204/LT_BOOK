@@ -22,7 +22,7 @@ const VerifySuccess = () => {
 
     try {
     // const response = await axios.post("http://localhost:9002/login", {
-    const response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/${id}/${token}`, {
+    const response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/verifyEmail/${id}/${token}`, {
       // withCredentials: true, // To include credentials in the request
       headers: {
         "Content-Type": "application/json",
