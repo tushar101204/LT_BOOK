@@ -77,7 +77,7 @@ const App = () => {
           <Route path="/profile" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/calendar" element={<CalendarView />} />
-          <Route path="signup" element={<Signup />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/logout" element={<Logout />} />
           <Route path="/passwordReset" element={<PasswordReset />} />

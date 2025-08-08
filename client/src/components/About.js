@@ -61,8 +61,7 @@ const AboutUpdateForm = () => {
       const response = await axios.post(
         `${process.env.REACT_APP_SERVER_URL}/emailVerificationLink`,
         {
-          
-
+          email: userData.email,
         },
         {
           withCredentials: true,
