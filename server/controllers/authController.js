@@ -8,11 +8,11 @@ const { reset } = require("nodemon");
 
 
 
-
 const register = async (req, res, next) => {
   try {
+    console.log("register karne aa gye")
     const { name, userType, adminKey, password, cpassword,email } = req.body;
-    
+    console.log(name,userType,adminKey,password,cpassword,email)
     const hodExist = await User.findOne({userType: "hod" });
 
     if (userType === "admin") {
@@ -39,7 +39,7 @@ const register = async (req, res, next) => {
 
     // Regular expression to validate full name with at least two words separated by a space
     const nameRegex = /^[\w'.]+\s[\w'.]+\s*[\w'.]*\s*[\w'.]*\s*[\w'.]*\s*[\w'.]*$/;
-  
+    console.log(nameRegex);
     if (!nameRegex.test(name)) {
       return res.status(422).json({ error: "Kindly provide your complete name." });
     }
@@ -78,7 +78,6 @@ const register = async (req, res, next) => {
 
 
 
-
   // transporter for sending email
   const transporter = nodemailer.createTransport({
     service:"gmail",
@@ -89,7 +88,6 @@ const register = async (req, res, next) => {
   })
 
 
-  
 
   const resetPasswordTemplate = (resetLink, userName) => {
     console.log("Reset Link ", resetLink);
@@ -129,18 +127,6 @@ const register = async (req, res, next) => {
   };
   
   
-  
-  
-
-
-
-   
-
-
-
-
-
-
   
   const verifyEmailTemplate = (resetLink,userFind) => {
     return `
@@ -349,22 +335,13 @@ const setNewPassword = async (req, res,next) => {
 }
 
 
-
-
-
-
-
-
-
-
-
 const emailVerificationLink = async (req, res,next) => {
-  // console.log(req.body);
+  console.log(req.body);
   // res.json({message:"login success"})
   try {
 
     const { email } = req.body;
-
+    console.log("email",email)
     if (!email ) {
       return res.status(400).json({ error: "Please Enter yout Email" });
     }
@@ -419,12 +396,12 @@ const emailVerificationLink = async (req, res,next) => {
 
 
 
-
-
 const verifyEmail = async (req, res,next) => {
   const {id,token} = req.params;
+  console.log("ha jee")
   console.log(id);
   console.log(token);
+  console.log("badhiya jee")
   try {
       
     const validUser = await User.findOne({_id:id})
@@ -453,9 +430,6 @@ const verifyEmail = async (req, res,next) => {
 
   }
 }
-
-
-
 
 
 
@@ -511,8 +485,6 @@ const login = async (req, res, next) => {
 
 
 
-
-
   const about = async (req, res) => {
     // console.log("about page");
     res.send(req.rootUser);
@@ -524,8 +496,6 @@ const login = async (req, res, next) => {
     //console.log(req.rootUser);
     res.send(req.rootUser);
   }
-
-
 
 
 
@@ -599,7 +569,6 @@ const login = async (req, res, next) => {
   }
   
   
-
   
   const logout = async (req, res, next) => {
     // const userId = req.userId; // get the userId from the request header
@@ -622,6 +591,7 @@ const login = async (req, res, next) => {
       res.status(500).json({ error: "Internal server error" });
     }
   }
+
   const deleteFaculty = async (req, res) => {
     try {
       console.log("Inside Delete Faculty");
@@ -680,7 +650,6 @@ const login = async (req, res, next) => {
       });
     }
   };
-  
   
   
 module.exports = { register, login, about, getdata,updateProfile, contact ,logout,passwordLink,forgotPassword,setNewPassword,emailVerificationLink,verifyEmail,deleteFaculty,getallInstructor};

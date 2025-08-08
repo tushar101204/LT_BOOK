@@ -3,7 +3,7 @@ require("dotenv").config();
 
 const DB = process.env.DATABASE;
 
-mongoose.set('strictQuery', false); // Set to false to avoid warnings for strict mode in Mongoose 6
+// mongoose.set('strictQuery', false); // Set to false to avoid warnings for strict mode in Mongoose 6
 
 const connectDB = async () => {
   try {

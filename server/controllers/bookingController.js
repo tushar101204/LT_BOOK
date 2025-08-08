@@ -6,10 +6,6 @@ const xlsx = require('xlsx');
 const { parseISO } = require('date-fns');
 
 
-
-
-
-
  // transporter for sending email
  const transporter = nodemailer.createTransport({
   service:"gmail",
@@ -334,11 +330,6 @@ const createBooking = async (req, res, next) => {
 };
 
 
-
-
- 
-
-
 // const getEvents = async (req, res, next) => {
 //   try {
 //     const bookings = await Booking.find({ isApproved: "Approved By Admin" }).populate('bookedHallId');
@@ -349,7 +340,6 @@ const createBooking = async (req, res, next) => {
 //     next(error);
 //   }
 // };
-
 
 
 const getEvents = async (req, res, next) => {
@@ -373,16 +363,6 @@ const getEvents = async (req, res, next) => {
     next(error);
   }
 };
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -473,7 +453,6 @@ const getBookingHod = async (req, res, next) => {
     next(error);
   }
 };
-
 
 
 
@@ -843,7 +822,6 @@ const getalllt = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
-
 
 
 module.exports = { upload,createBooking, getBookings, getBookingById, updateBooking, deleteBooking, getBookingByUserId, getEvents,getBookingAdmin ,getBookingHod,getalllt};
