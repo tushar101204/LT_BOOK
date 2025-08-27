@@ -46,7 +46,7 @@ const updateHall = async (req, res, next) => {
   try {
     const { hallId } = req.params;
     const { name, location, capacity ,amenities,description} = req.body;
-    const currentUserMail = req.rootUser.email; // Renamed to avoid conflict
+    const currentUserMail = (req.user && req.user.id) ? (await User.findById(req.user.id)).email : null; // Renamed to avoid conflict
     const masterAdminmail = process.env.REACT_APP_MASTER_ADMIN;
     const hall = await Hall.findById(hallId);
 

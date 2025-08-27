@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const hallController = require('../controllers/hallController');
-const authenticate = require("../middleware/authenticate");
+const { auth } = require("../middleware/authenticate");
 
 
 router.get('/halls', hallController.getHalls);
-router.get('/halls/:hallId',authenticate, hallController.getHallById);
-router.post('/halls',authenticate, hallController.createHall);
-router.put('/halls/:hallId',authenticate, hallController.updateHall);
-router.delete('/halls/:hallId',authenticate, hallController.deleteHall);
+router.get('/halls/:hallId',auth, hallController.getHallById);
+router.post('/halls',auth, hallController.createHall);
+router.put('/halls/:hallId',auth, hallController.updateHall);
+router.delete('/halls/:hallId',auth, hallController.deleteHall);
 
 module.exports = router;

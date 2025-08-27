@@ -4,6 +4,10 @@ const User = require('../model/userSchema');
 const nodemailer = require("nodemailer");
 const xlsx = require('xlsx');
 const { parseISO } = require('date-fns');
+const mailSender = require("../utills/mailSender");
+const bookingRequestTemplate = require("../template/bookingRequestTemplate");
+const bookingApprovalTemplate = require("../template/bookingApprovalTemplate");
+const bookingRejectionTemplate = require("../template/bookingRejectionTemplate");
 
 
  // transporter for sending email
@@ -15,96 +19,7 @@ const { parseISO } = require('date-fns');
   }
 })
 
-const generateBookingEmailTemplate = (eventName, bookedHallName, organizingClub, institution, department, bookingId,eventDate) => {
-  return `
-
-
-  <head>
-  <meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
-  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-  <style>
-    a,
-    a:link,
-    a:visited {
-      text-decoration: none;
-      color: #00788a;
-    }
-  
-    a:hover {
-      text-decoration: underline;
-    }
-  
-    h2,
-    h2 a,
-    h2 a:visited,
-    h3,
-    h3 a,
-    h3 a:visited,
-    h4,
-    h5,
-    h6,
-    .t_cht {
-      color: #000 !important;
-    }
-  
-    .ExternalClass p,
-    .ExternalClass span,
-    .ExternalClass font,
-    .ExternalClass td {
-      line-height: 100%;
-    }
-  
-    .ExternalClass {
-      width: 100%;
-    }
-  </style>
-  </head>
-  
-  <body style="font-size: 1.25rem;font-family: 'Roboto', sans-serif;padding-left:20px;padding-right:20px;padding-top:20px;padding-bottom:20px; background-color: #FAFAFA; width: 75%; max-width: 1280px; min-width: 600px; margin-right: auto; margin-left: auto">
-  <table cellpadding="12" cellspacing="0" width="100%" bgcolor="#FAFAFA" style="border-collapse: collapse;margin: auto">
-
-    <tbody>
-    <tr>
-      <td style="padding: 50px; background-color: #fff; max-width: 660px">
-        <table width="100%" style="">
-          <tr>
-            <td style="text-align:center">
-            <h1 style="font-size: 30px; color: #4f46e5; margin-top: 0;">New Booking Request</h1> 
-            <h1 style="font-size: 30px; color: #202225; margin-top: 0;">Hello Admin</h1>
-              <p style="font-size: 18px; margin-bottom: 30px; color: #202225; max-width: 60ch; margin-left: auto; margin-right: auto">A new booking has been requested on our platform. Please review the booking details provided below and click the button to view the booking.</p>
-               <h1 style="font-size: 25px;text-align: left; color: #202225; margin-top: 0;">Booking Details</h1>
-              <div style="text-align: justify; margin:20px; display: flex;">
-                
-                <div style="flex: 1; margin-right: 20px;">
-                  <h1 style="font-size: 20px; color: #202225; margin-top: 0;">EVENT NAME	 :</h1>
-                  <h1 style="font-size: 20px; color: #202225; margin-top: 0;">HALL NAME	 :</h1>
-                  <h1 style="font-size: 20px; color: #202225; margin-top: 0;">EVENTDATE :</h1>
-                      
-                 
-                </div>
-                <div style="flex: 1;">
-                  <h1 style="font-size: 20px; color: #202225; margin-top: 0;">${eventName}</h1>
-                  <h1 style="font-size: 20px; color: #202225; margin-top: 0;">${bookedHallName}</h1>
-                   <h1 style="font-size: 20px; color: #202225; margin-top: 0;">${eventDate}</h1>
-                  
-              
-                </div>
-              </div>
-              
-              <a href="http://${process.env.CLIENT_URL}/bookingsView/${bookingId}" style="background-color: #4f46e5; color: #fff; padding: 8px 24px; border-radius: 8px; border-style: solid; border-color: #4f46e5; font-size: 14px; text-decoration: none; cursor: pointer">View Booking</a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </tbody>
-
-  </table>
-  </body>
-
-
-  `;
-};
+const generateBookingEmailTemplate = bookingRequestTemplate;
 
 
 const upload = async (req, res, next) => {
@@ -226,7 +141,8 @@ const createBooking = async (req, res, next) => {
       return res.status(422).json({ error: 'Hall not found' });
     }
 
-    const user = await User.findById(userId);
+    const currentUserId = (req.user && req.user.id) ? req.user.id : userId;
+    const user = await User.findById(currentUserId);
     if (!user) {
       return res.status(422).json({ error: 'user not found' });
     }
@@ -306,21 +222,8 @@ const createBooking = async (req, res, next) => {
 
     await booking.save();
 
-    const mailOptions = {
-      from: process.env.SENDER_EMAIL,
-      to: hall.hallCreater, // Use the hall creator's email here
-      subject: 'New Booking Request',
-      html:   generateBookingEmailTemplate(eventName, bookedHallName, organizingClub, institution, department, booking._id,eventDate),
-      
-    };
-
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error('Error sending email:', error);
-      } else {
-        console.log('Email sent:', info.response);
-      }
-    });
+    const html = generateBookingEmailTemplate(eventName, bookedHallName, organizingClub, institution, department, booking._id,eventDate);
+    await mailSender(hall.hallCreater, 'New Booking Request', html);
 
     res.status(201).json({ message: 'Booking created successfully' });
   } catch (error) {
@@ -334,7 +237,7 @@ const createBooking = async (req, res, next) => {
 //   try {
 //     const bookings = await Booking.find({ isApproved: "Approved By Admin" }).populate('bookedHallId');
 
-    
+   
 //     res.json({ bookings });
 //   } catch (error) {
 //     next(error);
@@ -502,324 +405,17 @@ const updateBooking = async (req, res, next) => {
 
     if (isApproved === 'Approved By Admin') {
       // Send email for approval
-      sendApprovalEmail(booking, bookingId);
+      const html = bookingApprovalTemplate(booking.eventName, booking.bookedHallName, booking.organizingClub, booking.institution, booking.department, bookingId);
+      await mailSender(process.env.ADMIN_LT_BOOK, 'Booking Request Approved', html);
     } else if (isApproved === 'Rejected By Admin') {
       // Send email for rejection
-      sendRejectionEmail(booking, bookingId , rejectionReason);
+      const html = bookingRejectionTemplate(booking.eventName, booking.bookedHallName, booking.organizingClub, booking.institution, booking.department, bookingId ,rejectionReason);
+      await mailSender(booking.email, 'Booking Request Rejected', html);
     }
 
     res.json({ message: 'Booking updated successfully', booking });
   } catch (error) {
     next(error);
-  }
-};
-
-
-
-    const sendApprovalEmail = async (booking, bookingId) => {
-      try {
-       
-    
-        const mailOptions = {
-          from: process.env.SENDER_EMAIL,
-          to: process.env.ADMIN_LT_BOOK, // Use the user's email associated with the booking
-          subject: 'Booking Request Approved',
-          html: sendApprovalEmailTemplate(booking.eventName, booking.bookedHallName, booking.organizingClub, booking.institution, booking.department, bookingId),
-        };
-    
-        await transporter.sendMail(mailOptions);
-      } catch (error) {
-        next(error);
-      }
-    };
-
-
-    const sendRejectionEmail = async (booking,  bookingId ,rejectionReason) => {
-      try {
-       
-    
-        const mailOptions = {
-          from: process.env.SENDER_EMAIL,
-          to: booking.email, // Use the user's email associated with the booking
-          subject: "Booking Request Rejected",
-          html: sendRejectionEmailTemplate(booking.eventName, booking.bookedHallName, booking.organizingClub, booking.institution, booking.department, bookingId ,rejectionReason),
-        };
-    
-        await transporter.sendMail(mailOptions);
-      } catch (error) {
-        console.error('Error sending email:', error);
-      }
-    };
-
-    const sendRejectionEmailTemplate = (eventName, bookedHallName, organizingClub, institution, department, bookingId ,rejectionReason) => {
-      return `
-    
-
-      <head>
-      <meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
-      <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-      <style>
-        a,
-        a:link,
-        a:visited {
-          text-decoration: none;
-          color: #00788a;
-        }
-      
-        a:hover {
-          text-decoration: underline;
-        }
-      
-        h2,
-        h2 a,
-        h2 a:visited,
-        h3,
-        h3 a,
-        h3 a:visited,
-        h4,
-        h5,
-        h6,
-        .t_cht {
-          color: #000 !important;
-        }
-      
-        .ExternalClass p,
-        .ExternalClass span,
-        .ExternalClass font,
-        .ExternalClass td {
-          line-height: 100%;
-        }
-      
-        .ExternalClass {
-          width: 100%;
-        }
-      </style>
-      </head>
-      
-      <body style="font-size: 1.25rem;font-family: 'Roboto', sans-serif;padding-left:20px;padding-right:20px;padding-top:20px;padding-bottom:20px; background-color: #FAFAFA; width: 75%; max-width: 1280px; min-width: 600px; margin-right: auto; margin-left: auto">
-      <table cellpadding="12" cellspacing="0" width="100%" bgcolor="#FAFAFA" style="border-collapse: collapse;margin: auto">
-  
-        <tbody>
-        <tr>
-          <td style="padding: 50px; background-color: #fff; max-width: 660px">
-            <table width="100%" style="">
-              <tr>
-                <td style="text-align:center">
-                 
-                  <h1 style="font-size: 30px; color: #ef4444; margin-top: 0;">Booking Request Rejected</h1>
-                  
-                  <h1 style="font-size: 30px; color: #202225; margin-top: 0;">Hello User</h1>
-                  <p style="font-size: 18px; margin-bottom: 30px; color: #202225; max-width: 60ch; margin-left: auto; margin-right: auto">Your booking request has been rejected due to following reason. Please review the booking details provided below and click the button below to view the booking.</p>
-                    <h1 style="font-size: 25px;text-align: left; color: #202225; margin-top: 0;">Reason for Rejection</h1>
-                  <p style="font-size: 18px; margin-bottom: 30px; color: #202225; max-width: 60ch; text-align: left;">${rejectionReason}</p>
-                   <h1 style="font-size: 25px;text-align: left; color: #202225; margin-top: 0;">Booking Details</h1>
-                  
-                  <div style="text-align: justify; margin:20px; display: flex;">
-                    
-                    <div style="flex: 1; margin-right: 20px;">
-                      <h1 style="font-size: 20px; color: #202225; margin-top: 0;">EVENT NAME	 :</h1>
-                      <h1 style="font-size: 20px; color: #202225; margin-top: 0;">HALL NAME	 :</h1>
-                      
-                     
-                    </div>
-                    <div style="flex: 1;">
-                    <h1 style="font-size: 20px; color: #202225; margin-top: 0;">${eventName}</h1>
-                    <h1 style="font-size: 20px; color: #202225; margin-top: 0;">${bookedHallName}</h1>
-                 
-                
-                  </div>
-                  </div>
-                  
-                  <a href="${process.env.CLIENT_URL}/bookingsView/${bookingId}"  style="background-color: #4f46e5; color: #fff; padding: 8px 24px; border-radius: 8px; border-style: solid; border-color: #4f46e5; font-size: 14px; text-decoration: none; cursor: pointer">View Booking</a>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </tbody>
-  
-      </table>
-      </body>
-  
-  
-  
-      `;
-    };
-
-    const sendApprovalEmailTemplate = (eventName, bookedHallName, organizingClub, institution, department, bookingId) => {
-      return `
-    
-
-      <head>
-      <meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
-      <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-      <style>
-        a,
-        a:link,
-        a:visited {
-          text-decoration: none;
-          color: #00788a;
-        }
-      
-        a:hover {
-          text-decoration: underline;
-        }
-      
-        h2,
-        h2 a,
-        h2 a:visited,
-        h3,
-        h3 a,
-        h3 a:visited,
-        h4,
-        h5,
-        h6,
-        .t_cht {
-          color: #000 !important;
-        }
-      
-        .ExternalClass p,
-        .ExternalClass span,
-        .ExternalClass font,
-        .ExternalClass td {
-          line-height: 100%;
-        }
-      
-        .ExternalClass {
-          width: 100%;
-        }
-      </style>
-      </head>
-      
-      <body style="font-size: 1.25rem;font-family: 'Roboto', sans-serif;padding-left:20px;padding-right:20px;padding-top:20px;padding-bottom:20px; background-color: #FAFAFA; width: 75%; max-width: 1280px; min-width: 600px; margin-right: auto; margin-left: auto">
-      <table cellpadding="12" cellspacing="0" width="100%" bgcolor="#FAFAFA" style="border-collapse: collapse;margin: auto">
-  
-        <tbody>
-        <tr>
-          <td style="padding: 50px; background-color: #fff; max-width: 660px">
-            <table width="100%" style="">
-              <tr>
-                <td style="text-align:center">
-                 
-                  <h1 style="font-size: 30px; color: #16a34a; margin-top: 0;">Booking Request Approved</h1>
-                  
-                  <h1 style="font-size: 30px; color: #202225; margin-top: 0;">Hello User</h1>
-                  <p style="font-size: 18px; margin-bottom: 30px; color: #202225; max-width: 60ch; margin-left: auto; margin-right: auto">Your booking request has been approved. Please review the booking details provided below and click the button below to view the booking.</p>
-                   <h1 style="font-size: 25px;text-align: left; color: #202225; margin-top: 0;">Booking Details</h1>
-                  
-                  <div style="text-align: justify; margin:20px; display: flex;">
-                    
-                    <div style="flex: 1; margin-right: 20px;">
-                      <h1 style="font-size: 20px; color: #202225; margin-top: 0;">EVENT NAME	 :</h1>
-                      <h1 style="font-size: 20px; color: #202225; margin-top: 0;">HALL NAME	 :</h1>
-                    
-                     
-                    </div>
-                    <div style="flex: 1;">
-                    <h1 style="font-size: 20px; color: #202225; margin-top: 0;">${eventName}</h1>
-                    <h1 style="font-size: 20px; color: #202225; margin-top: 0;">${bookedHallName}</h1>
-                    
-                
-                  </div>
-                  </div>
-                  
-                  <a href="${process.env.CLIENT_URL}/bookingsView/${bookingId}"  style="background-color: #4f46e5; color: #fff; padding: 8px 24px; border-radius: 8px; border-style: solid; border-color: #4f46e5; font-size: 14px; text-decoration: none; cursor: pointer">View Booking</a>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </tbody>
-  
-      </table>
-      </body>
-  
-  
-      `;
-    };
-
-const deleteBooking = async (req, res, next) => {
-  try {
-    const { bookingId } = req.params;
-    const booking = await Booking.findByIdAndDelete(bookingId);
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
-    res.json({ message: 'Booking deleted successfully' });
-  } catch (error) {
-    console.log(error);
-    next(error);
-  }
-};
-
-const getalllt = async (req, res) => {
-  try {
-    const { eventDate, startTime, endTime } = req.body;
-
-    if (!eventDate || !startTime || !endTime) {
-      return res.status(400).json({ message: 'Please provide eventDate, startTime, and endTime' });
-    }
-
-    // Convert the input times to Date objects
-    const eventDateObj = new Date(eventDate);
-    const startTimeObj = new Date(startTime);
-    const endTimeObj = new Date(endTime);
-
-    // Validate start and end time
-    if (startTimeObj >= endTimeObj) {
-      return res.status(400).json({ message: 'End time must be later than start time' });
-    }
-
-    // Define requestedDay from eventDate
-    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const requestedDay = daysOfWeek[eventDateObj.getUTCDay()];
-    console.log(requestedDay);
-    // Find all the booked halls that overlap with the requested time slot
-    const overlappingBookings = await Booking.find({
-      $or: [
-        // Case 1: If `day` field exists, check for time overlap on the specific day
-        {
-          day: requestedDay,
-          $or: [
-            { startTime: { $lt: endTimeObj, $gte: startTimeObj } },  // Event starts within the requested time
-            { endTime: { $gt: startTimeObj, $lte: endTimeObj } },    // Event ends within the requested time
-            { startTime: { $lte: startTimeObj }, endTime: { $gte: endTimeObj } }  // Event spans over the requested time
-          ]
-        },
-        // Case 2: If `day` field does not exist, check for date and time overlap
-        {
-          day: { $exists: false },
-          eventDate: eventDateObj,  // Check if eventDate matches the requested eventDate
-          $or: [
-            { startTime: { $lt: endTimeObj, $gte: startTimeObj } },  // Event starts within the requested time
-            { endTime: { $gt: startTimeObj, $lte: endTimeObj } },    // Event ends within the requested time
-            { startTime: { $lte: startTimeObj }, endTime: { $gte: endTimeObj } }  // Event spans over the requested time
-          ]
-        }
-      ]
-    }).select('bookedHallId');
-
-    // Get the list of all hall IDs that are booked
-    const bookedHallIds = overlappingBookings.map(booking => booking.bookedHallId);
-
-    // Find halls that are not booked in the requested time slot
-    const availableHalls = await Hall.find({
-      _id: { $nin: bookedHallIds }
-    });
-
-    if (availableHalls.length === 0) {
-      return res.status(200).json({
-        message: 'No halls available for the selected date and time'
-      });
-    }
-
-    res.status(200).json({ 
-      availableHalls,
-      message: "Lt fetched successfully"
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Internal server error' });
   }
 };
 

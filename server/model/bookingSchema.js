@@ -6,6 +6,10 @@ const bookingSchema = new mongoose.Schema(
     ref: 'USER',
     //required: true
   },
+  userRole: {
+    type: String,
+    enum: ["student", "faculty", "admin"],
+  },
   // institution:{
   //   type: String,
   //   required: true
