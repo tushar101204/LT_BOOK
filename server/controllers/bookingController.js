@@ -233,17 +233,6 @@ const createBooking = async (req, res, next) => {
 };
 
 
-// const getEvents = async (req, res, next) => {
-//   try {
-//     const bookings = await Booking.find({ isApproved: "Approved By Admin" }).populate('bookedHallId');
-
-   
-//     res.json({ bookings });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
 
 const getEvents = async (req, res, next) => {
   try {
@@ -300,7 +289,7 @@ const getBookingById = async (req, res, next) => {
 
 const getBookingByUserId = async (req, res, next) => {
   try {
-    const userId = req.rootUser._id;
+    const userId = (req.user && req.user.id) ? req.user.id : null;
     const booking = await Booking.find({  userId:userId }).populate('bookedHallId').populate('userId');
     // if (!mongoose.Types.ObjectId.isValid(userId)) {
     //   return res.status(400).json({ message: 'Invalid userId' });
@@ -317,40 +306,18 @@ const getBookingByUserId = async (req, res, next) => {
 
 const getBookingAdmin = async (req, res, next) => {
   try {
-    let statusArray = ["Approved By HOD", "Approved By Admin", "Rejected By Admin"];
-    const adminEmail = req.rootUser.email;
-    const userId = req.rootUser._id;
-    // console.log("admin bookng");
-    // console.log(adminEmail);
-    if (process.env.REACT_APP_HOD_FEATURE != "true") {
-      statusArray.unshift("Request Sent"); // Add "Request Sent" at the beginning if HOD feature is on
-    }
+    let statusArray = ["Approved By Admin", "Rejected By Admin", "Request Sent"];
+    const currentUser = (req.user && req.user.id) ? await User.findById(req.user.id) : null;
+    const adminEmail = currentUser ? currentUser.email : null;
 
     const bookings = await Booking.find({
        isApproved: { $in: statusArray },
-  $or: [
-    { email: adminEmail},
-    // Add other conditions as needed
-    {'bookedHall.hallCreater': adminEmail },
-  ],
-}
-    ).populate('bookedHallId')
+       $or: [
+         { email: adminEmail},
+         {'bookedHall.hallCreater': adminEmail },
+       ],
+    }).populate('bookedHallId')
       .populate('userId');
-      // console.log(bookings);
-    res.json({ bookings });
-  } catch (error) {
-    next(error);
-  }
-};
-
-
-const getBookingHod = async (req, res, next) => {
-  const hodDepartment = req.rootUser.department
-  // console.log(hodDepartment);
-  try {
-    const bookings = await Booking.find({ department: hodDepartment }).populate('bookedHallId');
-
-    
     res.json({ bookings });
   } catch (error) {
     next(error);
@@ -420,4 +387,90 @@ const updateBooking = async (req, res, next) => {
 };
 
 
-module.exports = { upload,createBooking, getBookings, getBookingById, updateBooking, deleteBooking, getBookingByUserId, getEvents,getBookingAdmin ,getBookingHod,getalllt};
+const deleteBooking = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findByIdAndDelete(bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    res.json({ message: 'Booking deleted successfully' });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+};
+
+const getalllt = async (req, res) => {
+  try {
+    const { eventDate, startTime, endTime } = req.body;
+
+    if (!eventDate || !startTime || !endTime) {
+      return res.status(400).json({ message: 'Please provide eventDate, startTime, and endTime' });
+    }
+
+    // Convert the input times to Date objects
+    const eventDateObj = new Date(eventDate);
+    const startTimeObj = new Date(startTime);
+    const endTimeObj = new Date(endTime);
+
+    // Validate start and end time
+    if (startTimeObj >= endTimeObj) {
+      return res.status(400).json({ message: 'End time must be later than start time' });
+    }
+
+    // Define requestedDay from eventDate
+    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const requestedDay = daysOfWeek[eventDateObj.getUTCDay()];
+
+    // Find all the booked halls that overlap with the requested time slot
+    const overlappingBookings = await Booking.find({
+      $or: [
+        // Case 1: If `day` field exists, check for time overlap on the specific day
+        {
+          day: requestedDay,
+          $or: [
+            { startTime: { $lt: endTimeObj, $gte: startTimeObj } },
+            { endTime: { $gt: startTimeObj, $lte: endTimeObj } },
+            { startTime: { $lte: startTimeObj }, endTime: { $gte: endTimeObj } }
+          ]
+        },
+        // Case 2: If `day` field does not exist, check for date and time overlap
+        {
+          day: { $exists: false },
+          eventDate: eventDateObj,
+          $or: [
+            { startTime: { $lt: endTimeObj, $gte: startTimeObj } },
+            { endTime: { $gt: startTimeObj, $lte: endTimeObj } },
+            { startTime: { $lte: startTimeObj }, endTime: { $gte: endTimeObj } }
+          ]
+        }
+      ]
+    }).select('bookedHallId');
+
+    // Get the list of all hall IDs that are booked
+    const bookedHallIds = overlappingBookings.map(booking => booking.bookedHallId);
+
+    // Find halls that are not booked in the requested time slot
+    const availableHalls = await Hall.find({
+      _id: { $nin: bookedHallIds }
+    });
+
+    if (availableHalls.length === 0) {
+      return res.status(200).json({
+        message: 'No halls available for the selected date and time'
+      });
+    }
+
+    res.status(200).json({ 
+      availableHalls,
+      message: "Lt fetched successfully"
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
+module.exports = { upload,createBooking, getBookings, getBookingById, updateBooking, deleteBooking, getBookingByUserId, getEvents, getBookingAdmin, getalllt };

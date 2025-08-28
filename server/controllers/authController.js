@@ -73,12 +73,6 @@ const register = async (req, res, next) => {
 
 
 
-  // moved to server/template/resetPasswordTemplate.js
-  
-  
-  
-  // moved to server/template/verifyEmailTemplate.js
-
 const passwordLink = async (req, res,next) => {
   // console.log(req.body);
   // res.json({message:"login success"})
