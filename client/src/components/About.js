@@ -150,7 +150,7 @@ const AboutUpdateForm = () => {
       {isLoading ? (
         <LoadingSpinner />
       ) : (
-        <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
+        <div className="flex min-h-screen w-full items-center justify-center bg-gray-100">
           <div className="w-full max-w-xl rounded-3xl p-10 shadow-xl bg-white border border-gray-100">
             <form onSubmit={updateProfile}>
               <div className="flex flex-col gap-8">
