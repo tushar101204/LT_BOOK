@@ -15,7 +15,7 @@ const Navbar = () => {
     if (state.userType === "admin") {
       return (
         <div className="flex items-center gap-6">
-          <Link onClick={closeMenu} to="/halls" className="hover:text-gray-900">Halls</Link>
+          
           <Link onClick={closeMenu} to="/user" className="hover:text-gray-900">Users</Link>
         </div>
       )
@@ -62,6 +62,7 @@ const Navbar = () => {
             <Link to="/" className="text-gray-700 hover:text-gray-900">Home</Link>
             <Link to="/events" className="text-gray-700 hover:text-gray-900">Events</Link>
             <Link to="/calendar" className="text-gray-700 hover:text-gray-900">Calendar</Link>
+            <Link onClick={closeMenu} to="/halls" className="hover:text-gray-900">Halls</Link>
             {renderRoleLinks()}
             <Link to="/profile" className="text-gray-700 hover:text-gray-900">Profile</Link>
           </div>

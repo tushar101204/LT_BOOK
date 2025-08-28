@@ -53,9 +53,6 @@ const HallsEdit = () => {
 
 
 
-
-
-
   const UpdateHallForm = async (e) => {
     e.preventDefault();
     const { name,location,capacity,amenities,description } = hallData;
@@ -194,8 +191,6 @@ const HallsEdit = () => {
             </div>
   
   
-  
-  
             <div className="flex flex-wrap -mx-3 mb-6">
   
   
@@ -241,8 +236,6 @@ const HallsEdit = () => {
   
   
   
-  
-  
             <div className="flex flex-wrap -mx-3 mb-6">
   
   
@@ -285,32 +278,9 @@ const HallsEdit = () => {
   
   
   
-            
-  
-  
-  
-        
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
             <div className="my-4">
                 <p className="text-s text-red-600	 font-bold">{authStatus}</p>
               </div>
-  
-  
-  
-  
-  
   
   
   
@@ -348,47 +318,6 @@ const HallsEdit = () => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   
-        {/* ) */}
-        {/* ) */}
-      {/* )  */}
-      {/* : (
-        <h2 className="text-2xl font-bold text-zinc-700  text-center mt-4">No halls found.</h2>
-
-      )} */}
-
-      
-{/* } */}
     </>
   );
 };

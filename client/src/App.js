@@ -6,7 +6,7 @@ import axios from "axios"
 import Navbar from "./components/Navbar";
 // import Home from "./components/Home";
 import About from "./components/About";
-import Contact from "./components/Contact";
+// import Contact from "./components/Contact";
 import Signup from "./components/auth/Signup";
 import Logout from "./components/auth/Logout";
 import Login from "./components/auth/Login";
@@ -14,7 +14,7 @@ import ErrorPage from "./components/ErrorPage";
 import Halls from "./components/halls/Halls";
 import BookingForm from "./components/bookings/BookingForm";
 import BookingsAdmin from "./components/bookings/BookingsAdmin";
-import BookingsHod from "./components/bookings/BookingsHod";
+// import BookingsHod from "./components/bookings/BookingsHod";
 import User from "./components/User";
 
 import AdminDashboard from "./components/dashboard/AdminDashboard";
@@ -75,7 +75,7 @@ const App = () => {
         <Route path="/" element={state.userType === "admin" ? <AdminDashboard /> : state.userType === "faculty" ? <FacultyDashboard /> : <Login />} />
           {/* <Route path="/" element={<Home />} /> */}
           <Route path="/profile" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
+          {/* <Route path="/contact" element={<Contact />} /> */}
           <Route path="/calendar" element={<CalendarView />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
@@ -96,7 +96,7 @@ const App = () => {
           {/* <Route exact path="/bookings/:bookingId" element={state.userType === "admin" ? <BookingUpdateFrom/>  : state.userType === "hod" ? <BookingUpdateFrom/>  : <Unauthorized />} /> */}
           <Route path="/hallForm" element={state.userType === "admin" ?<HallForm /> : <Unauthorized />} />
 
-          <Route path="/bookings" element={state.userType === "admin" ? <BookingsAdmin/> : state.userType === "faculty" ? <BookingFaculty/> :  process.env.REACT_APP_HOD_FEATURE && state.userType === "hod" ? <BookingsHod/>  : <Unauthorized />} />
+          <Route path="/bookings" element={state.userType === "admin" ? <BookingsAdmin/> : state.userType === "faculty" ? <BookingFaculty/> : <Unauthorized />} />
           <Route exact path="/bookingForm/:hallId/:hallName" element={<BookingForm />} />
           {/* <Route path="/bookings" element={<Booking/>} /> */}
 

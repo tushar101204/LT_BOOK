@@ -219,7 +219,6 @@ const HallForm = () => {
   
   
   
-  
             <div className="flex flex-wrap -mx-3 mb-6">
   
   
@@ -263,9 +262,6 @@ const HallForm = () => {
             </div>
   
   
-  
-  
-  
             <div className="flex flex-wrap -mx-3 mb-6">
   
   
@@ -291,33 +287,9 @@ const HallForm = () => {
   
   
   
-            
-  
-  
-  
-        
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
             <div className="my-4">
                 <p className="text-s text-red-600	 font-bold">{authStatus}</p>
               </div>
-  
-  
-  
-  
-  
-  
   
   
             <div className="flex flex-wrap -mx-3 mb-6">
@@ -341,53 +313,6 @@ const HallForm = () => {
         ) 
          }
 
-
-
-
-
-
-
-
-     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   
-        {/* ) */}
-        {/* ) */}
-      {/* )  */}
-      {/* : (
-        <h2 className="text-2xl font-bold text-zinc-700  text-center mt-4">No halls found.</h2>
-
-      )} */}
 
       
 {/* } */}

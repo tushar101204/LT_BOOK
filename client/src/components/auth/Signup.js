@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingSpinner from "../LoadingSpinner";
 import { toast } from "react-toastify";
-import { institutions, InstitutionList, DepartmentList } from "../Institutions"; // Update the path as needed
+// import { institutions, InstitutionList, DepartmentList } from "../Institutions"; // Update the path as needed
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ const Signup = () => {
     email: "",
     phone: "",
     userType: "",
-    institution: "",
+    // institution: "",
     department: "",
     password: "",
     cpassword: "",
@@ -38,7 +38,7 @@ const Signup = () => {
       email,
       phone,
       userType,
-      institution,
+      // institution,
       department,
       adminKey,
       password,
@@ -53,7 +53,7 @@ const Signup = () => {
           email,
           // phone,
           userType,
-          institution,
+          // institution,
           department,
           adminKey,
           password,

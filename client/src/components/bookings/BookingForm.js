@@ -6,7 +6,7 @@ import LoadingSpinner from "../LoadingSpinner";
 import axios from "axios";
 import { parseISO } from "date-fns";
 // import { DepartmentList, InstitutionList } from "../InstitutionDeptartmentList";
-import { institutions, InstitutionList, DepartmentList } from "../Institutions"; // Update the path as needed
+// import { institutions, InstitutionList, DepartmentList } from "../Institutions"; // Update the path as needed
 
 import notVerified from "../../assets/notVerified.jpg";
 
@@ -273,10 +273,10 @@ const BookingForm = () => {
     }
   };
 
-  const institutionName =
-    InstitutionList[bookingData.institution] || bookingData.institution;
-  const departmentName =
-    DepartmentList[bookingData.department] || bookingData.department;
+  // const institutionName =
+  //   InstitutionList[bookingData.institution] || bookingData.institution;
+  // const departmentName =
+  //   DepartmentList[bookingData.department] || bookingData.department;
 
   return (
     <>

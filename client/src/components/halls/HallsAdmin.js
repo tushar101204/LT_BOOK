@@ -1,391 +1,196 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom"
-import axios from 'axios';
+import { useNavigate, Link } from "react-router-dom";
+import axios from "axios";
 import LoadingSpinner from "../LoadingSpinner";
 import { toast } from "react-toastify";
-// import BookingForm from "./BookingForm";
 
 const HallsAdmin = () => {
   const navigate = useNavigate();
-  const [hallData, setHallData] = useState({});
-    const [userData, setUserData] = useState({});
+  const [halls, setHalls] = useState([]);
+  const [userData, setUserData] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  // const [authStatus, setAuthStatus] = useState("");
-  const [showModal,setShowModal]=useState(false);
-  const [selectedHallId, setSelectedHallId] = useState("");
-  const [selectedHallName, setSelectedHallName] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [selectedHall, setSelectedHall] = useState(null);
 
-  const callAboutPage = async () => {
+  // Fetch user info
+  const getUserData = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/about`, {
-        withCredentials: true, 
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        }
+      const res = await axios.get(`${process.env.REACT_APP_SERVER_URL}/about`, {
+        withCredentials: true,
+        headers: { "Content-Type": "application/json" },
       });
-      const data = response.data;
-      //consolelog(data);
-      setUserData(data);
-      // console.log(data);
-      setIsLoading(false);
-      if (response.status !== 200) {
-        throw new Error(response.error);
-      }
-    } catch (error) {
-      if (error.response.status === 401) {
-        toast.warn("Unauthrized Access! Please Login!", {
-          toastId: 'Unauthrized'
-      })
+      setUserData(res.data);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        toast.warn("Unauthorized! Please login.");
         navigate("/login");
       }
     }
   };
-  // useEffect(() => {
-  //   callAboutPage()
-  // // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [])
 
-
+  // Fetch halls
   const getHallsData = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/halls`, {
-        withCredentials: true, // include credentials in the request
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        }
+      const res = await axios.get(`${process.env.REACT_APP_SERVER_URL}/halls`, {
+        withCredentials: true,
+        headers: { "Content-Type": "application/json" },
       });
-
-      const data = response.data;
-      // console.log(data);
-      setHallData(data.halls);
+      setHalls(res.data.halls || []);
+    } catch (err) {
+      toast.error("Failed to load halls");
+    } finally {
       setIsLoading(false);
-
-      if (response.status !== 200) {
-        throw new Error(response.error);
-      }
-    } catch (error) {
-      // console.log(error);
-      // navigate("/login");
     }
   };
-
-
 
   useEffect(() => {
-  callAboutPage()
+    getUserData();
     getHallsData();
+  }, []);
 
-  }, [])
-
-
-  
-  const handleDeleteClick = async (hallId) => {
-    // e.preventDefault();
-
-
-    try {
-      const response = await axios.delete (
-        `${process.env.REACT_APP_SERVER_URL}/halls/${hallId}`,
-
-        {
-          withCredentials: true, // To include credentials in the request
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = response.data;
-
-      if (!data) {
-        toast.error("Request not send!")
-        // console.log("Message not send");
-      } else {
-        getHallsData();
-        toast.success("Hall Deleted Successfull!")
-        // alert("Message send");
-        setShowModal(false);
-        setSelectedHallId("");
-        setSelectedHallName("");
-        navigate("/halls")
-        // setBookingData({ ...bookingData });
-      }
-    } catch (error) {
-      if (error.response.status === 422 && error.response) {
-        const data = error.response.data;
-        // setAuthStatus(data.error);
-        // console.log(data.error);
-        // window.alert(data.error);
-      } else {
-        console.error(error);
-      }
-      // console.log(error);
-    }
-  };
-
-
+  // Actions
   const handleBookingClick = (hallId, hallName) => {
-    navigate(`/bookingForm/${hallId}/${hallName}`)
+    navigate(`/bookingForm/${hallId}/${hallName}`);
   };
 
   const handleEditClick = (hallId, hallName) => {
-    navigate(`/halls/${hallId}/${hallName}`)
+    navigate(`/halls/${hallId}/${hallName}`);
   };
 
-
-  // const hallId =hallData.hallId
-  // const hallName = hallData.hallName
-
-  // const handleBookingClick = (hallId,hallName) => {
-  //   navigate('/bookingForm', { state: { hallId, hallName } });
-
-  // };
-
-
-  // const handleBookingClick = () => {
-  //   sendData(data);
-  // };
-  const handleDeleteModal = (hallId, hallName) => {
-    setSelectedHallId(hallId);
-    setSelectedHallName(hallName);
-    setShowModal(true);
+  const handleDeleteClick = async () => {
+    if (!selectedHall) return;
+    try {
+      await axios.delete(
+        `${process.env.REACT_APP_SERVER_URL}/halls/${selectedHall._id}`,
+        { withCredentials: true }
+      );
+      toast.success("Hall deleted successfully!");
+      setShowModal(false);
+      setSelectedHall(null);
+      getHallsData();
+    } catch {
+      toast.error("Failed to delete hall");
+    }
   };
 
   return (
-<>{isLoading ? (
-          <LoadingSpinner />
-        ) : 
-    <div className="mt-6 min-h-screen"> 
-    
-   <div className="py-5 md:py-0 flex container mx-auto px-6 justify-between  items-center">
-   <div className="mx-auto ">
-    <h1 className="text-xl  sm:text-3xl md:text-4xl lg:text-3xl xl:text-3xl text-center text-gray-800 font-black leading-7 ml-3 md:leading-10">
-   Available <span className="text-indigo-700"> Halls</span>  </h1>
-
-   </div>
-   <Link to="/hallForm">
-            <button className="flex self-end focus:outline-none lg:text-lg lg:font-bold focus:ring-2 focus:ring-offset-2 focus:ring-indigo-700  md:block bg-transparent transition duration-150 ease-in-out hover:bg-gray-200 rounded border border-indigo-700 text-indigo-700  sm:px-8 py-1 sm:py-3 text-sm">
-              Create Hall</button>
-          </Link>
-   </div>
-
-      {Array.isArray(hallData) && hallData.length > 0 ? (
-        hallData.map((hall) => (
-          <div key={hall._id} className="my-2 ">
-            <div className="flex w-full items-center justify-center">
-              <div className="w-full rounded-xl p-12 shadow-2xl shadow-blue-200 md:w-8/12 lg:w-8/12 bg-white">
-
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                  {/* <div className="grid-cols-1 lg:col-span-3">
-                    <div className="mx-auto flex h-[90px] w-[90px] items-center justify-center rounded-full bg-blue-100 p-4">
-                      <svg
-                        id="logo-39"
-                        width="50"
-                        height="40"
-                        viewBox="0 0 50 40"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M25.0001 0L50 15.0098V24.9863L25.0001 40L0 24.9863V15.0099L25.0001 0Z"
-                          fill="#A5B4FC"
-                          className="ccompli2"
-                        ></path>
-                        <path
-                          fill-rule="evenodd"
-                          clip-rule="evenodd"
-                          d="M0 15.0098L25 0L50 15.0098V24.9863L25 40L0 24.9863V15.0098ZM25 33.631L44.6967 21.8022V18.1951L44.6957 18.1945L25 30.0197L5.30426 18.1945L5.3033 18.1951V21.8022L25 33.631ZM25 24.5046L40.1018 15.4376L36.4229 13.2298L25 20.0881L13.5771 13.2298L9.89822 15.4376L25 24.5046ZM25 14.573L31.829 10.4729L25 6.37467L18.171 10.4729L25 14.573Z"
-                          fill="#4F46E5"
-                          className="ccustom"
-                        ></path>
-                        <path
-                          d="M25.0001 0L0 15.0099V24.9863L25 40L25.0001 0Z"
-                          fill="#A5B4FC"
-                          className="ccompli2"
-                          fill-opacity="0.3"
-                        ></path>
-                      </svg>
-                    </div>
-                  </div> */}
-
-                  <div className="col-span-1 lg:col-span-9">
-                    <div className="text-center lg:text-left">
-                      <h2 className="text-2xl font-bold text-zinc-700">{hall.name}</h2>
-                      {/* <p className="mt-2 text-l font-semibold text-zinc-700">{hall.location}</p> */}
-                      {/* <p className="mt-4 text-zinc-500">I am a Front End Developer and UI/UX Designer</p> */}
-                    </div>
-
-                    {/* <div className="mt-6 grid grid-cols-2 gap-6 text-center lg:text-left">
-                      <div>
-                        <p className="font-bold text-zinc-700">Hall Id</p>
-                      </div>
-
-                      <div>
-                        <p className="text-m font-semibold text-zinc-700">{hall._id}</p>
-                      </div>
-                    </div> */}
-
-
-                    {/* <div className="mt-6 grid grid-cols-2 gap-6 text-center lg:text-left">
-                <div>
-                  <p className="font-bold text-zinc-700">Name</p>
-                </div>
-
-                <div>
-                  <p className="text-m font-semibold text-zinc-700">Name</p>
-                </div>
-              </div> */}
-
-
-                    <div className="mt-6 grid grid-cols-2 gap-6 text-center lg:text-left">
-                      <div>
-                        <p className="font-bold text-zinc-700">Location</p>
-                      </div>
-
-                      <div>
-                        <p className="text-m font-semibold text-zinc-700">{hall.location}</p>
-                      </div>
-                    </div>
-
-
-
-                    <div className="mt-6 grid grid-cols-2 gap-6 text-center lg:text-left">
-                      <div>
-                        <p className="font-bold text-zinc-700">Capacity</p>
-                      </div>
-
-                      <div>
-                        <p className="text-m font-semibold text-zinc-700">{hall.capacity}</p>
-                      </div>
-                    </div>
-
-
-                    <div className="mt-6 grid grid-cols-2 gap-6 text-center lg:text-left">
-                      <div>
-                        <p className="font-bold text-zinc-700">Amenities</p>
-                      </div>
-
-                      <div>
-                        <p className="text-m font-semibold text-zinc-700">{hall.amenities}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 grid grid-cols-2 gap-6 text-center lg:text-left">
-                      <div>
-                        <p className="font-bold text-zinc-700">Description</p>
-                      </div>
-
-                      <div>
-                        <p className="text-m font-semibold text-zinc-700">{hall.description}</p>
-                      </div>
-                    </div>
-
-
-
-
-
-
-
-
-
-                    <div className="mt-6 grid grid-cols-3 gap-4">
-                      {/* <Link to={`/bookingForm`}> */}
-                      <button className="w-full rounded-xl border-2 border-blue-500 bg-white px-3 py-2 font-semibold text-blue-500 hover:bg-blue-500 hover:text-white"
-                        onClick={() => handleBookingClick(hall._id, hall.name)}
-                      >
-                        Book Now
-                      </button>
-                {userData.email === process.env.REACT_APP_MASTER_ADMIN_EMAIL || userData.email === hall.hallCreater  ? 
-                <>
-                      <button className="w-full rounded-xl border-2 border-blue-500 bg-white px-3 py-2 font-semibold text-blue-500 hover:bg-blue-500 hover:text-white"
-                        onClick={() => handleEditClick(hall._id, hall.name)}
-                      >
-                        Edit Hall
-                      </button>
-
-                      <button className="w-full rounded-xl border-2 border-red-500 bg-white px-3 py-2 font-semibold text-red-500 hover:bg-red-500 hover:text-white"
-                        // onClick={() => handleDeleteClick(hall._id, hall.name)}
-                        // onClick={() => setShowModal(true)} 
-                        onClick={() =>
-                          handleDeleteModal(hall._id, hall.name)
-                        }
-                        >
-                        Delete Hall
-                      </button>
-                        </>
-
-                    : <></>}
-                      {/* </Link> */}
-                      {/* <button className="w-full rounded-xl border-2 border-blue-500 bg-white px-3 py-2 font-semibold text-blue-500 hover:bg-blue-500 hover:text-white">
-                  View Profile
-                </button> */}
-                    </div>
-
-
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        
-
-      
-        
-
-        ))
+    <>
+      {isLoading ? (
+        <LoadingSpinner />
       ) : (
-        <h2 className="text-2xl font-bold text-zinc-700  text-center mt-10">No halls found.</h2>
+        <div className="mt-8 min-h-screen flex flex-col items-center">
+          {/* Header */}
+          <div className="w-11/12 md:w-4/5 flex flex-col md:flex-row justify-between items-center mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4 md:mb-0">
+              Manage <span className="text-indigo-600">Halls</span>
+            </h1>
+            <Link to="/hallForm">
+              <button className="rounded-xl bg-green-500 text-white px-5 py-2 font-medium hover:bg-green-600 shadow-md transition">
+                + Create Hall
+              </button>
+            </Link>
+          </div>
 
+          {/* Table */}
+          {halls.length > 0 ? (
+            <div className="w-11/12 md:w-4/5 overflow-x-auto shadow-xl rounded-xl">
+              <table className="w-full bg-white border border-gray-200 rounded-xl">
+                <thead>
+                  <tr className="bg-indigo-600 text-white text-sm md:text-base">
+                    <th className="py-4 px-6 text-left">Hall Name</th>
+                    <th className="py-4 px-6 text-left">Location</th>
+                    <th className="py-4 px-6 text-left">Capacity</th>
+                    <th className="py-4 px-6 text-left">Amenities</th>
+                    <th className="py-4 px-6 text-left">Description</th>
+                    <th className="py-4 px-6 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {halls.map((hall, index) => (
+                    <tr
+                      key={hall._id}
+                      className={`${
+                        index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                      } hover:bg-indigo-50 transition`}
+                    >
+                      <td className="py-4 px-6">{hall.name}</td>
+                      <td className="py-4 px-6">{hall.location}</td>
+                      <td className="py-4 px-6">{hall.capacity}</td>
+                      <td className="py-4 px-6">{hall.amenities}</td>
+                      <td className="py-4 px-6">{hall.description}</td>
+                      <td className="py-4 px-6 text-center space-x-2">
+                        {/* Book */}
+                        <button
+                          className="rounded-lg bg-indigo-500 text-white px-3 py-2 hover:bg-indigo-600 shadow transition"
+                          onClick={() => handleBookingClick(hall._id, hall.name)}
+                        >
+                          Book
+                        </button>
+
+                        {/* Edit & Delete (Admins Only) */}
+                        {(userData.email === process.env.REACT_APP_MASTER_ADMIN_EMAIL ||
+                          userData.email === hall.hallCreater) && (
+                          <>
+                            <button
+                              className="rounded-lg bg-green-500 text-white px-3 py-2 hover:bg-green-600 shadow transition"
+                              onClick={() => handleEditClick(hall._id, hall.name)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="rounded-lg bg-red-500 text-white px-3 py-2 hover:bg-red-600 shadow transition"
+                              onClick={() => {
+                                setSelectedHall(hall);
+                                setShowModal(true);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <h2 className="text-xl md:text-2xl font-semibold text-gray-600 mt-12">
+              No halls found.
+            </h2>
+          )}
+        </div>
       )}
 
-      </div>
-}
-
-  
-{/* 
-      {
-        showModal &&
-              
-        <div class="bg-slate-800 bg-opacity-50 flex justify-center items-center absolute top-0 right-0 bottom-0 left-0">
-            <div class="bg-white px-16 py-14 rounded-md text-center">
-              <h1 class="text-xl mb-4 font-bold text-slate-500">Do you Want Delete</h1>
-              <button onClick={() => handleDeleteClick(hall._id, hall.name)} class="bg-indigo-500 px-7 py-2 ml-2 rounded-md text-md text-white font-semibold">Ok</button>
-              <button onClick={() => setShowModal(false)} class="bg-red-500 px-4 py-2 rounded-md text-md text-white">Cancel</button>
-            </div>
-          </div>
-        
-      } */}
-
-{showModal && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg px-8 py-6">
-            <h2 className="text-lg font-bold mb-4">
-              Are you sure you want to delete {selectedHallName}?
+      {/* Delete Confirmation Modal */}
+      {showModal && selectedHall && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">
+              Delete "{selectedHall.name}"?
             </h2>
-            <div className="flex justify-end">
+            <p className="text-gray-600 mb-6 text-sm">
+              Are you sure you want to delete this hall? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
               <button
-                className="mr-2 px-4 py-2 text-white bg-red-500 hover:bg-red-600 rounded-lg focus:outline-none"
-                onClick={() =>
-                  handleDeleteClick(selectedHallId)
-                }
-              >
-                Delete
-              </button>
-              <button
-                className="px-4 py-2 text-white bg-gray-500 hover:bg-gray-600 rounded-lg focus:outline-none"
+                className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition"
                 onClick={() => setShowModal(false)}
               >
                 Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                onClick={handleDeleteClick}
+              >
+                Delete
               </button>
             </div>
           </div>
         </div>
       )}
-        </>
+    </>
   );
-  
 };
 
 export default HallsAdmin;

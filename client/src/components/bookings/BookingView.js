@@ -14,7 +14,7 @@ import {
   RejectedByAdmin,
   RejectedByHod,
 } from "../Steps";
-import { DepartmentList, InstitutionList } from "../Institutions";
+// import { DepartmentList, InstitutionList } from "../Institutions";
 const BookingsView = () => {
   const navigate = useNavigate();
   const { bookingId } = useParams();
@@ -189,10 +189,10 @@ const BookingsView = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const institutionName =
-    InstitutionList[bookingData.institution] || bookingData.institution;
-  const departmentName =
-    DepartmentList[bookingData.department] || bookingData.department;
+  // const institutionName =
+  //   InstitutionList[bookingData.institution] || bookingData.institution;
+  // const departmentName =
+  //   DepartmentList[bookingData.department] || bookingData.department;
 
   return (
     <>
