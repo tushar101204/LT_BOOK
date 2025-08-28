@@ -25,9 +25,9 @@ const Navbar = () => {
         <Link onClick={closeMenu} to="/bookings" className="hover:text-gray-900">Bookings</Link>
       )
     }
-    return (
-      <Link onClick={closeMenu} to="/halls" className="hover:text-gray-900">Halls</Link>
-    )
+    // return (
+    //   <Link onClick={closeMenu} to="/halls" className="hover:text-gray-900">Halls</Link>
+    // )
   }
 
   const AuthButton = () => {
