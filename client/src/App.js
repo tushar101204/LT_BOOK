@@ -20,7 +20,7 @@ import User from "./components/User";
 import AdminDashboard from "./components/dashboard/AdminDashboard";
 import FacultyDashboard from "./components/dashboard/FacultyDashboard";
 import BookingFaculty from "./components/bookings/BookingsFaculty";
-import Footer from "./components/Footer";
+// import Footer from "./components/Footer";
 import HallsAdmin from "./components/halls/HallsAdmin";
 import { initialState, reducer } from "./reducer/UseReducer";
 
@@ -30,7 +30,7 @@ import {  ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import HallsEdit from "./components/halls/HallsEdit";
 import HallForm from "./components/halls/HallForm";
-import HodDashboard from "./components/dashboard/HodDashboard";
+// import HodDashboard from "./components/dashboard/HodDashboard";
 import PasswordReset from "./components/auth/PasswordReset";
 
 import ForgotPassword from "./components/auth/ForgotPassword";
@@ -72,7 +72,7 @@ const App = () => {
 
         <Navbar />
         <Routes>
-        <Route path="/" element={state.userType === "admin" ? <AdminDashboard /> : state.userType === "faculty" ? <FacultyDashboard /> : process.env.REACT_APP_HOD_FEATURE &&  state.userType === "hod" ? <HodDashboard />  : <Login />} />
+        <Route path="/" element={state.userType === "admin" ? <AdminDashboard /> : state.userType === "faculty" ? <FacultyDashboard /> : <Login />} />
           {/* <Route path="/" element={<Home />} /> */}
           <Route path="/profile" element={<About />} />
           <Route path="/contact" element={<Contact />} />
