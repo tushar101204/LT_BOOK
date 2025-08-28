@@ -58,7 +58,8 @@ function isStudent(req, res, next) {
 function isFaculty(req, res, next) {
   try {
     if (!req.user || req.user.userType !== "faculty") {
-      return res.status(401).json({ success: false, message: "Protected route: Students only" });
+      console.log("Printing User details : ",req.user)
+      return res.status(401).json({ success: false, message: "Protected route: Faculty only" });
     }
     return next();
   } catch (error) {

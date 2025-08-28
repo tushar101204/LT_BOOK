@@ -13,7 +13,7 @@ router.get('/bookingsAdmin', auth, isAdmin, bookingController.getBookingAdmin);
 router.get('/events',  bookingController.getEvents);
 router.get('/bookingsView/:bookingId',auth, bookingController.getBookingById);
 // router.get('/bookings/:id', bookingController.getBookingById);
-router.get('/bookingsFaculty',auth, isFaculty, bookingController.getBookingByUserId);
+router.get('/bookingsFaculty',auth, bookingController.getBookingByUserId);
 router.post('/bookings',auth, bookingController.createBooking);
 router.put('/bookingsEdit/:bookingId',auth, bookingController.updateBooking);
 router.delete('/bookings/:bookingId', bookingController.deleteBooking);
