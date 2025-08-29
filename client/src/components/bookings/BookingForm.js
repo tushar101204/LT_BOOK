@@ -127,6 +127,8 @@ const BookingForm = () => {
           eventEndDate,
           startTime: parseISO(`2000-01-01T${startTime}:00.000Z`),
           endTime: parseISO(`2000-01-01T${endTime}:00.000Z`),
+          // startTime: new Date(`2000-01-01T${startTime}:00`).toISOString(),
+          // endTime: new Date(`2000-01-01T${endTime}:00`).toISOString(),
           email,
           userType,
           bookedHallId,
@@ -165,6 +167,8 @@ const BookingForm = () => {
           eventDate,
           startTime: parseISO(`2000-01-01T${startTime}:00.000Z`),
           endTime: parseISO(`2000-01-01T${endTime}:00.000Z`),
+          // startTime: new Date(`2000-01-01T${startTime}:00`).toISOString(),
+          // endTime: new Date(`2000-01-01T${endTime}:00`).toISOString(),
         },
         { withCredentials: true, headers: { "Content-Type": "application/json" } }
       );
