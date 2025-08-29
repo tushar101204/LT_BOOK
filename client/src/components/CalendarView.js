@@ -3,10 +3,7 @@ import {
   MdChevronLeft,
   MdChevronRight,
   MdLocationPin,
-  MdToday,
-  MdSchedule,
   MdGroup,
-  MdDateRange,
 } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,7 +11,6 @@ import {
   eachDayOfInterval,
   endOfMonth,
   format,
-  getDay,
   isEqual,
   isSameDay,
   isSameMonth,
@@ -42,156 +38,216 @@ export const CalendarView = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/events`, {
-          headers: { Accept: "application/json", "Content-Type": "application/json" },
-        });
-        setEvents(response.data.bookings);
-      } catch (error) {
-        console.error("Error fetching events:", error);
+        const res = await axios.get(
+          `${process.env.REACT_APP_SERVER_URL}/events`,
+          { headers: { Accept: "application/json" } }
+        );
+        setEvents(res.data.bookings);
+      } catch (err) {
+        console.error("Error fetching events:", err);
       }
     };
     fetchEvents();
   }, []);
 
   useEffect(() => {
-    const fetchHallNames = async () => {
+    const fetchHalls = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_SERVER_URL}/halls`);
-        setHallNames(response.data.halls);
-      } catch (error) {
-        console.error("Error fetching hall names:", error);
+        const res = await axios.get(`${process.env.REACT_APP_SERVER_URL}/halls`);
+        setHallNames(res.data.halls);
+      } catch (err) {
+        console.error("Error fetching halls:", err);
       }
     };
-    fetchHallNames();
+    fetchHalls();
   }, []);
 
   const handleHallSelection = (hallName) => {
     setSelectedHalls((prev) =>
-      prev.includes(hallName) ? prev.filter((hall) => hall !== hallName) : [...prev, hallName]
+      prev.includes(hallName)
+        ? prev.filter((hall) => hall !== hallName)
+        : [...prev, hallName]
     );
   };
 
   const isHallSelected = (hallName) => selectedHalls.includes(hallName);
 
-  const filteredEvents = selectedHalls.length > 0
-    ? events.filter((event) => selectedHalls.includes(event.bookedHallName))
-    : events;
+  const filteredEvents =
+    selectedHalls.length > 0
+      ? events.filter((e) => selectedHalls.includes(e.bookedHallName))
+      : events;
 
-  const days = eachDayOfInterval({ start: firstDayCurrentMonth, end: endOfMonth(firstDayCurrentMonth) });
+  const days = eachDayOfInterval({
+    start: firstDayCurrentMonth,
+    end: endOfMonth(firstDayCurrentMonth),
+  });
 
-  const previousMonth = () => {
+  const previousMonth = () =>
     setCurrentMonth(format(add(firstDayCurrentMonth, { months: -1 }), "MMM-yyyy"));
-  };
-
-  const nextMonth = () => {
+  const nextMonth = () =>
     setCurrentMonth(format(add(firstDayCurrentMonth, { months: 1 }), "MMM-yyyy"));
-  };
 
   const selectedDayMeetings = filteredEvents.filter((booking) => {
     const eventStartDate = parseISO(booking.eventStartDate);
     const eventEndDate = parseISO(booking.eventEndDate);
     const eventDate = parseISO(booking.eventDate);
-    const eventDateType = booking.eventDateType;
+    const type = booking.eventDateType;
 
-    if (eventDateType === "full" || eventDateType === "half") {
+    if (type === "full" || type === "half") {
       return isSameDay(eventDate, selectedDay);
-    } else if (eventDateType === "multiple") {
-      return isWithinInterval(selectedDay, { start: eventStartDate, end: eventEndDate }) || isSameDay(eventStartDate, selectedDay);
+    } else if (type === "multiple") {
+      return (
+        isWithinInterval(selectedDay, { start: eventStartDate, end: eventEndDate }) ||
+        isSameDay(eventStartDate, selectedDay)
+      );
     }
-
     return false;
   });
 
   return (
-    <div className="my-12 mx-auto max-w-7xl">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Filter Section */}
-        <div className="md:col-span-1 p-4 bg-white shadow-lg rounded-lg">
-          <h1 className="text-2xl font-semibold text-center text-gray-800 mb-4">Filters</h1>
-          <h2 className="text-lg font-bold text-indigo-700 mb-3">By Hall Name</h2>
-          <div className="flex flex-wrap gap-2">
-            <button
-              className={`py-1 px-3 rounded-full mb-2 ${selectedHalls.length === 0 ? "bg-indigo-100 text-indigo-800" : "bg-gray-100 text-gray-800"}`}
-              onClick={() => setSelectedHalls([])}
-            >
-              All
-            </button>
-            {hallNames.map((hall) => (
-              <button
-                key={hall.id}
-                className={`py-1 px-3 rounded-full mb-2 ${isHallSelected(hall.name) ? "bg-indigo-100 text-indigo-800" : "bg-gray-100 text-gray-800"}`}
-                onClick={() => handleHallSelection(hall.name)}
-              >
-                {hall.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Calendar Section */}
-        <div className="col-span-2 p-4 bg-white shadow-lg rounded-lg">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              {format(firstDayCurrentMonth, "MMMM yyyy")}
+    <div className="flex flex-col min-h-screen w-full bg-gray-100">
+      <div className="flex-grow container mx-auto px-4 py-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {/* Filters */}
+          <div className="bg-white shadow rounded-2xl p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">
+              Filters
             </h2>
-            <div className="flex space-x-2">
-              <button onClick={previousMonth} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
-                <MdChevronLeft className="w-6 h-6 text-gray-600" />
+            <h3 className="text-base font-bold text-indigo-600 mb-3">By Hall</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedHalls([])}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                  selectedHalls.length === 0
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                All
               </button>
-              <button onClick={nextMonth} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
-                <MdChevronRight className="w-6 h-6 text-gray-600" />
-              </button>
+              {hallNames.map((hall) => (
+                <button
+                  key={hall.id}
+                  onClick={() => handleHallSelection(hall.name)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                    isHallSelected(hall.name)
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {hall.name}
+                </button>
+              ))}
             </div>
           </div>
-          <div className="grid grid-cols-7 text-center text-gray-600 mb-2 font-semibold">
-            <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
-          </div>
-          <div className="grid grid-cols-7 gap-2">
-            {days.map((day, idx) => (
-              <div key={day.toString()} className="text-center">
+
+          {/* Calendar */}
+          <div className="bg-white shadow rounded-2xl p-6 md:col-span-2">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-gray-800">
+                {format(firstDayCurrentMonth, "MMMM yyyy")}
+              </h2>
+              <div className="flex gap-2">
                 <button
-                  type="button"
-                  onClick={() => setSelectedDay(day)}
-                  className={classNames(
-                    "w-full h-8 rounded-full flex items-center justify-center",
-                    isEqual(day, selectedDay) && "bg-indigo-600 text-white",
-                    !isEqual(day, selectedDay) && isToday(day) && "text-red-500",
-                    !isEqual(day, selectedDay) && isSameMonth(day, firstDayCurrentMonth) && "text-gray-900",
-                    !isEqual(day, selectedDay) && !isSameMonth(day, firstDayCurrentMonth) && "text-gray-400",
-                    !isEqual(day, selectedDay) && "hover:bg-gray-200"
-                  )}
+                  onClick={previousMonth}
+                  className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"
                 >
-                  <time dateTime={format(day, "yyyy-MM-dd")}>{format(day, "d")}</time>
+                  <MdChevronLeft className="w-5 h-5 text-gray-600" />
                 </button>
-                <div className="flex justify-center mt-1 space-x-1">
-                  {filteredEvents.map((booking) => {
-                    const eventDate = parseISO(booking.eventDate);
-                    const eventDateType = booking.eventDateType;
-
-                    if (eventDateType === "full" && isSameDay(eventDate, day)) {
-                      return <span key={booking.id} className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>;
-                    } else if (eventDateType === "half" && isSameDay(eventDate, day)) {
-                      return <span key={booking.id} className="w-1.5 h-1.5 bg-green-600 rounded-full"></span>;
-                    }
-                    return null;
-                  })}
-                </div>
+                <button
+                  onClick={nextMonth}
+                  className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"
+                >
+                  <MdChevronRight className="w-5 h-5 text-gray-600" />
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* Events Section */}
-        <div className="md:col-span-1 p-4 bg-white shadow-lg rounded-lg">
-          <h2 className="font-semibold text-gray-900 mb-2">Schedule for <time dateTime={format(selectedDay, "yyyy-MM-dd")}>{format(selectedDay, "MMM dd, yyyy")}</time></h2>
-          <div className="h-80 overflow-y-auto">
-            {selectedDayMeetings.length > 0 ? (
-              selectedDayMeetings.map((events) => (
-                <Meeting events={events} key={events._id} />
-              ))
-            ) : (
-              <p className="text-gray-500 text-sm">No events for today.</p>
-            )}
+            {/* Weekdays */}
+            <div className="grid grid-cols-7 text-center text-gray-500 font-semibold mb-2">
+              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                <div key={d}>{d}</div>
+              ))}
+            </div>
+
+            {/* Days */}
+            <div className="grid grid-cols-7 gap-2">
+              {days.map((day) => (
+                <div key={day.toString()} className="text-center">
+                  <button
+                    onClick={() => setSelectedDay(day)}
+                    className={classNames(
+                      "w-full h-9 rounded-full flex items-center justify-center transition",
+                      isEqual(day, selectedDay) &&
+                        "bg-indigo-600 text-white font-semibold",
+                      !isEqual(day, selectedDay) &&
+                        isToday(day) &&
+                        "text-red-500 font-bold",
+                      !isEqual(day, selectedDay) &&
+                        isSameMonth(day, firstDayCurrentMonth) &&
+                        "text-gray-800",
+                      !isEqual(day, selectedDay) &&
+                        !isSameMonth(day, firstDayCurrentMonth) &&
+                        "text-gray-400",
+                      !isEqual(day, selectedDay) && "hover:bg-gray-200"
+                    )}
+                  >
+                    <time dateTime={format(day, "yyyy-MM-dd")}>
+                      {format(day, "d")}
+                    </time>
+                  </button>
+
+                  {/* Dots */}
+                  <div className="flex justify-center mt-1 space-x-1">
+                    {filteredEvents.map((booking) => {
+                      const date = parseISO(booking.eventDate);
+                      if (
+                        booking.eventDateType === "full" &&
+                        isSameDay(date, day)
+                      ) {
+                        return (
+                          <span
+                            key={booking._id + "-full"}
+                            className="w-1.5 h-1.5 bg-blue-600 rounded-full"
+                          />
+                        );
+                      }
+                      if (
+                        booking.eventDateType === "half" &&
+                        isSameDay(date, day)
+                      ) {
+                        return (
+                          <span
+                            key={booking._id + "-half"}
+                            className="w-1.5 h-1.5 bg-green-600 rounded-full"
+                          />
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Events */}
+          <div className="bg-white shadow rounded-2xl p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">
+              Schedule for{" "}
+              <time dateTime={format(selectedDay, "yyyy-MM-dd")}>
+                {format(selectedDay, "MMM dd, yyyy")}
+              </time>
+            </h2>
+            <div className="h-80 overflow-y-auto">
+              {selectedDayMeetings.length > 0 ? (
+                selectedDayMeetings.map((ev) => (
+                  <Meeting key={ev._id} events={ev} />
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm">No events for today.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -201,30 +257,21 @@ export const CalendarView = () => {
 
 function Meeting({ events }) {
   const navigate = useNavigate();
-
-  const handleViewClick = (bookingId) => {
-    navigate(`/bookingsView/${bookingId}`);
-  };
-
   return (
-    <li className="flex items-start bg-white shadow-md rounded-lg p-4 mb-3">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900">{events.eventName}</h2>
-        <div className="text-sm text-gray-700 flex items-center mt-1">
-          <MdLocationPin className="mr-1" /> {events.bookedHallName}
-        </div>
-        <div className="text-sm text-gray-700 flex items-center mt-1">
-          <MdGroup className="mr-1" /> {events.eventManager} {/* Display Event Manager here */}
-        </div>
-        <button
-          onClick={() => handleViewClick(events._id)}
-          className="mt-4 px-4 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded hover:bg-indigo-700 transition duration-200"
-        >
-          View Details
-        </button>
-      </div>
+    <li className="bg-gray-50 rounded-xl p-4 mb-3 shadow hover:shadow-md transition">
+      <h3 className="text-lg font-bold text-gray-800">{events.eventName}</h3>
+      <p className="text-sm text-gray-600 flex items-center mt-1">
+        <MdLocationPin className="mr-1" /> {events.bookedHallName}
+      </p>
+      <p className="text-sm text-gray-600 flex items-center mt-1">
+        <MdGroup className="mr-1" /> {events.eventManager}
+      </p>
+      <button
+        onClick={() => navigate(`/bookingsView/${events._id}`)}
+        className="mt-3 px-4 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition"
+      >
+        View Details
+      </button>
     </li>
   );
 }
-
-let colStartClasses = ["", "col-start-2", "col-start-3", "col-start-4", "col-start-5", "col-start-6", "col-start-7"];
