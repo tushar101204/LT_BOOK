@@ -15,7 +15,7 @@ router.post('/passwordLink', authController.passwordLink);
 router.get('/forgotPassword/:id/:token', authController.forgotPassword);
 router.post('/:id/:token', authController.setNewPassword);
 
-router.post('/emailVerificationLink', auth, isFaculty,  authController.emailVerificationLink);
+router.post('/emailVerificationLink', auth,  authController.emailVerificationLink);
 router.get('/getuser', auth, isAdmin, authController.getallInstructor);
 router.delete('/deleteuser/:userID', auth, isAdmin, authController.deleteFaculty);
 

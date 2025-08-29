@@ -63,13 +63,13 @@ const register = async (req, res, next) => {
 
 
   // transporter for sending email
-  const transporter = nodemailer.createTransport({
-    service:"gmail",
-    auth:{
-      user:process.env.SENDER_EMAIL,
-      pass:process.env.SENDER_PASSWORD
-    }
-  })
+  // const transporter = nodemailer.createTransport({
+  //   service:"gmail",
+  //   auth:{
+  //     user:process.env.SENDER_EMAIL,
+  //     pass:process.env.SENDER_PASSWORD
+  //   }
+  // })
 
 
 
