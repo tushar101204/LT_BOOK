@@ -7,6 +7,10 @@ const User = () => {
   const [faculties, setFaculties] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // For delete modal
+  const [showModal, setShowModal] = useState(false);
+  const [selectedFaculty, setSelectedFaculty] = useState(null);
+
   // Fetch faculties
   useEffect(() => {
     const fetchFaculties = async () => {
@@ -37,12 +41,12 @@ const User = () => {
   }, []);
 
   // Delete faculty
-  const handleDeleteFaculty = async (facultyId) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+  const handleDeleteFaculty = async () => {
+    if (!selectedFaculty) return;
 
     try {
       const response = await axios.delete(
-        `${process.env.REACT_APP_SERVER_URL}/deleteuser/${facultyId}`,
+        `${process.env.REACT_APP_SERVER_URL}/deleteuser/${selectedFaculty._id}`,
         {
           withCredentials: true,
           headers: {
@@ -54,13 +58,16 @@ const User = () => {
 
       if (response.data.success) {
         toast.success("User deleted successfully!");
-        setFaculties((prev) => prev.filter((f) => f._id !== facultyId));
+        setFaculties((prev) => prev.filter((f) => f._id !== selectedFaculty._id));
       } else {
         toast.info(response.data.message || "User not found.");
       }
     } catch (error) {
       console.error("Error deleting user:", error.message);
       toast.error("Failed to delete user.");
+    } finally {
+      setShowModal(false);
+      setSelectedFaculty(null);
     }
   };
 
@@ -113,7 +120,10 @@ const User = () => {
                   </td>
                   <td className="py-3 px-6">
                     <button
-                      onClick={() => handleDeleteFaculty(faculty._id)}
+                      onClick={() => {
+                        setSelectedFaculty(faculty);
+                        setShowModal(true);
+                      }}
                       className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition"
                     >
                       Delete
@@ -128,6 +138,34 @@ const User = () => {
         <p className="text-center text-lg text-gray-600 mt-10">
           No Users Found
         </p>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showModal && selectedFaculty && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">
+              Delete "{selectedFaculty.name}"?
+            </h2>
+            <p className="text-gray-600 mb-6 text-sm">
+              Are you sure you want to delete this user? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition"
+                onClick={() => setShowModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                onClick={handleDeleteFaculty}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

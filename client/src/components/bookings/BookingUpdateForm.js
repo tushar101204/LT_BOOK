@@ -198,12 +198,13 @@ const BookingForm = () => {
     <div>
       <div className="max-w-screen-md mx-auto p-5 my-10 bg-white shadow-2xl shadow-blue-200">
         <div className="text-center mb-16">
-          <p className="mt-4 text-sm leading-7 text-gray-500 font-regular uppercase">
+          {/* <p className="mt-4 text-sm leading-7 text-gray-500 font-regular uppercase">
             Update Booking
-          </p>
-          <h3 className="text-3xl sm:text-4xl leading-normal font-extrabold tracking-tight text-gray-900">
-          Update <span className="text-indigo-600">Booking </span>
-          </h3>
+          </p> */}
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8 text-center">
+            Update <span className="text-indigo-600">Booking</span>
+          </h1>
+
         </div>
 
         <form method="POST" className="w-full">

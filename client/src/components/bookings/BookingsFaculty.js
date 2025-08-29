@@ -8,9 +8,13 @@ import { format } from "date-fns";
 
 const BookingFaculty = () => {
   const navigate = useNavigate();
-  const [bookingData, setBookingData] = useState([]); // ✅ should be array
+  const [bookingData, setBookingData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterValue, setFilterValue] = useState("all");
+
+  // ✅ For cancel modal
+  const [showModal, setShowModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   // ✅ Fetch bookings for faculty
   const getBookingData = async () => {
@@ -26,17 +30,12 @@ const BookingFaculty = () => {
         }
       );
 
-      // Check what your backend actually returns
-      // console.log(response.data);
-
-      // ✅ Adjust according to your backend
       setBookingData(response.data.bookings || response.data.booking || []);
-      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching bookings:", error);
-      console.log("Failed to load bookings:", error.response);
       toast.error("Failed to load bookings.");
-      setIsLoading(false); // ✅ important
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -44,10 +43,13 @@ const BookingFaculty = () => {
     getBookingData();
   }, []);
 
-  const deleteBooking = async (bookingId) => {
+  // ✅ Cancel booking
+  const deleteBooking = async () => {
+    if (!selectedBooking) return;
+
     try {
       const response = await axios.delete(
-        `${process.env.REACT_APP_SERVER_URL}/bookings/${bookingId}`
+        `${process.env.REACT_APP_SERVER_URL}/bookings/${selectedBooking._id}`
       );
 
       toast.success(response.data.message, {
@@ -56,21 +58,26 @@ const BookingFaculty = () => {
         hideProgressBar: true,
       });
 
-      getBookingData(); // ✅ refresh list after delete
+      getBookingData(); // Refresh list
     } catch (error) {
       console.error("Error deleting booking:", error);
       toast.error("Failed to delete booking. Please try again.");
+    } finally {
+      setShowModal(false);
+      setSelectedBooking(null);
     }
   };
 
+  // ✅ Filters
   const handleFilter = (value) => setFilterValue(value);
 
   const filteredBookings = bookingData.filter((booking) => {
-    if (filterValue === "Request Sent") return booking.isApproved === "Request Sent";
-    if (filterValue === "Approved By HOD") return booking.isApproved === "Approved By HOD";
-    if (filterValue === "Approved By Admin") return booking.isApproved === "Approved By Admin";
-    if (filterValue === "Rejected By Admin") return booking.isApproved === "Rejected By Admin";
-    if (filterValue === "Rejected By HOD") return booking.isApproved === "Rejected By HOD";
+    if (filterValue === "Request Sent")
+      return booking.isApproved === "Request Sent";
+    if (filterValue === "Approved By Admin")
+      return booking.isApproved === "Approved By Admin";
+    if (filterValue === "Rejected By Admin")
+      return booking.isApproved === "Rejected By Admin";
     return true;
   });
 
@@ -79,116 +86,153 @@ const BookingFaculty = () => {
   };
 
   return (
-    <div className="mt-6 min-h-screen">
-      <h1 className="text-3xl text-center text-gray-800 font-black leading-7">
-        Your <span className="text-indigo-700">Bookings</span>
+    <div className="min-h-screen flex flex-col items-center py-8 bg-gray-50">
+      {/* Title */}
+      <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-8">
+        Your <span className="text-indigo-600">Bookings</span>
       </h1>
 
       {/* Filters */}
-      <div className="flex flex-wrap my-8 justify-center">
-        <button
-          className={`rounded-full px-4 py-2 mx-2 ${
-            filterValue === "all" ? "bg-indigo-100 text-indigo-800" : "bg-white text-gray-800 hover:bg-gray-100"
-          }`}
-          onClick={() => handleFilter("all")}
-        >
-          All
-        </button>
-        <button
-          className={`rounded-full px-4 py-2 mx-2 ${
-            filterValue === "Approved By Admin" ? "bg-indigo-100 text-indigo-800" : "bg-white text-gray-800 hover:bg-gray-100"
-          }`}
-          onClick={() => handleFilter("Approved By Admin")}
-        >
-          Approved By Admin
-        </button>
-        <button
-          className={`rounded-full px-4 py-2 mx-2 ${
-            filterValue === "Rejected By Admin" ? "bg-indigo-100 text-indigo-800" : "bg-white text-gray-800 hover:bg-gray-100"
-          }`}
-          onClick={() => handleFilter("Rejected By Admin")}
-        >
-          Rejected By Admin
-        </button>
+      <div className="flex flex-wrap justify-center gap-3 mb-10">
+        {["all", "Approved By Admin", "Rejected By Admin"].map((status) => (
+          <button
+            key={status}
+            onClick={() => handleFilter(status)}
+            className={`px-5 py-2 rounded-full text-sm font-medium transition shadow-sm ${
+              filterValue === status
+                ? "bg-indigo-600 text-white shadow-md"
+                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
+            }`}
+          >
+            {status === "all" ? "All" : status}
+          </button>
+        ))}
       </div>
 
-      {/* Loading / Table */}
+      {/* Table / Loader */}
       {isLoading ? (
         <LoadingSpinner />
       ) : (
-        <div className="container w-full px-4 mx-auto sm:px-8">
-          <div className="overflow-x-auto shadow-xl rounded-lg">
-            <table className="min-w-full leading-normal text-center">
-              <thead className="bg-gray-200 text-gray-800">
-                <tr>
-                  <th className="px-4 py-3">Event Name</th>
-                  <th className="px-4 py-3">Hall Name</th>
-                  <th className="px-4 py-3">Organizing Club</th>
-                  <th className="px-4 py-3">Event Date</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBookings.length > 0 ? (
-                  filteredBookings.map((booking) => (
-                    <tr key={booking._id} className="border-b">
-                      <td className="px-5 py-5">{booking.eventName}</td>
-                      <td className="px-5 py-5">{booking.bookedHallName}</td>
-                      <td className="px-5 py-5">{booking.organizingClub}</td>
-                      <td className="px-5 py-5">
-                        {booking.eventDateType === "multiple" ? (
-                          <>
-                            {format(new Date(booking.eventStartDate), "EEEE dd-MM-yyyy")}
-                            <br />To<br />
-                            {format(new Date(booking.eventEndDate), "EEEE dd-MM-yyyy")}
-                          </>
-                        ) : (
-                          format(new Date(booking.eventDate), "EEEE dd-MM-yyyy")
-                        )}
-                      </td>
-                      <td className="px-5 py-5 font-bold">
-                        {booking.isApproved === "Approved By Admin" && (
-                          <span className="text-green-600">{booking.isApproved}</span>
-                        )}
-                        {booking.isApproved === "Approved By HOD" && (
-                          <span className="text-blue-600">Forwarded To Admin</span>
-                        )}
-                        {booking.isApproved === "Rejected By Admin" && (
-                          <span className="text-red-600">{booking.isApproved}</span>
-                        )}
-                        {booking.isApproved === "Rejected By HOD" && (
-                          <span className="text-red-600">{booking.isApproved}</span>
-                        )}
-                        {booking.isApproved === "Request Sent" && (
-                          <span className="text-orange-600">Pending</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-5">
-                        <button
-                          onClick={() => handleViewClick(booking._id)}
-                          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => deleteBooking(booking._id)}
-                          className="ml-3 px-4 py-2 bg-red-200 rounded hover:bg-red-300"
-                        >
-                          Cancel
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td className="px-5 py-5 text-center" colSpan="6">
-                      No Bookings Requests found.
+        <div className="w-11/12 md:w-4/5 overflow-x-auto shadow-lg rounded-lg">
+          <table className="w-full bg-white border border-gray-200 rounded-lg">
+            <thead>
+              <tr className="bg-indigo-600 text-white">
+                <th className="px-6 py-4 text-left">Event Name</th>
+                <th className="px-6 py-4 text-left">Hall</th>
+                <th className="px-6 py-4 text-left">Club</th>
+                <th className="px-6 py-4 text-left">Event Date</th>
+                <th className="px-6 py-4 text-left">Status</th>
+                <th className="px-6 py-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBookings.length > 0 ? (
+                filteredBookings.map((booking, index) => (
+                  <tr
+                    key={booking._id}
+                    className={`${
+                      index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                    } hover:bg-indigo-50 transition`}
+                  >
+                    <td className="px-6 py-4 font-medium text-gray-700">
+                      {booking.eventName}
+                    </td>
+                    <td className="px-6 py-4">{booking.bookedHallName}</td>
+                    <td className="px-6 py-4">{booking.organizingClub}</td>
+                    <td className="px-6 py-4">
+                      {booking.eventDateType === "multiple" ? (
+                        <>
+                          {format(
+                            new Date(booking.eventStartDate),
+                            "EEE dd-MM-yyyy"
+                          )}
+                          <br />to<br />
+                          {format(
+                            new Date(booking.eventEndDate),
+                            "EEE dd-MM-yyyy"
+                          )}
+                        </>
+                      ) : (
+                        format(new Date(booking.eventDate), "EEE dd-MM-yyyy")
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {booking.isApproved === "Approved By Admin" && (
+                        <span className="px-3 py-1 rounded-full text-green-700 bg-green-100 text-sm font-semibold">
+                          {booking.isApproved}
+                        </span>
+                      )}
+                      {["Rejected By Admin", "Rejected By HOD"].includes(
+                        booking.isApproved
+                      ) && (
+                        <span className="px-3 py-1 rounded-full text-red-700 bg-red-100 text-sm font-semibold">
+                          {booking.isApproved}
+                        </span>
+                      )}
+                      {booking.isApproved === "Request Sent" && (
+                        <span className="px-3 py-1 rounded-full text-orange-700 bg-orange-100 text-sm font-semibold">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 flex justify-center gap-2">
+                      <button
+                        onClick={() => handleViewClick(booking._id)}
+                        className="rounded-lg bg-indigo-500 text-white px-4 py-2 text-sm hover:bg-indigo-600 transition"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedBooking(booking);
+                          setShowModal(true);
+                        }}
+                        className="rounded-lg bg-red-500 text-white px-4 py-2 text-sm hover:bg-red-600 transition"
+                      >
+                        Cancel
+                      </button>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan="6"
+                    className="px-6 py-6 text-center text-gray-500 font-medium"
+                  >
+                    No Booking Requests Found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showModal && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">
+              Cancel "{selectedBooking.eventName}"?
+            </h2>
+            <p className="text-gray-600 mb-6 text-sm">
+              Are you sure you want to cancel this booking? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition"
+                onClick={() => setShowModal(false)}
+              >
+                No
+              </button>
+              <button
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                onClick={deleteBooking}
+              >
+                Yes, Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
