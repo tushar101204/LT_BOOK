@@ -7,9 +7,6 @@ const { auth, isAdmin, isFaculty } = require("../middleware/authenticate");
 
 // router.get('/bookings', auth, bookingController.getBookings);
 router.get('/bookingsAdmin', auth, isAdmin, bookingController.getBookingAdmin);
-// HOD role removed → route disabled; use faculty/admin dashboards instead
-// router.get('/bookingsHod', auth, bookingController.getBookingHod);
-
 router.get('/events',  bookingController.getEvents);
 router.get('/bookingsView/:bookingId',auth, bookingController.getBookingById);
 // router.get('/bookings/:id', bookingController.getBookingById);

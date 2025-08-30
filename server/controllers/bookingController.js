@@ -10,14 +10,6 @@ const bookingApprovalTemplate = require("../template/bookingApprovalTemplate");
 const bookingRejectionTemplate = require("../template/bookingRejectionTemplate");
 
 
- // transporter for sending email
- const transporter = nodemailer.createTransport({
-  service:"gmail",
-  auth:{
-    user:process.env.SENDER_EMAIL,
-    pass:process.env.SENDER_PASSWORD
-  }
-})
 
 const generateBookingEmailTemplate = bookingRequestTemplate;
 
@@ -157,7 +149,7 @@ const createBooking = async (req, res, next) => {
         return res.status(422).json({ error: "Please fill all details" });
       }
     }else if(eventDateType === "multiple") {
-      if (!eventStartDate || !eventStartDate ) {
+      if (!eventStartDate || !eventEndDate ) {
         return res.status(422).json({ error: "Please fill all details" });
       }else{
 

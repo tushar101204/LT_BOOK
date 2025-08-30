@@ -60,8 +60,6 @@ const register = async (req, res, next) => {
   }
 };
 
-
-
   // transporter for sending email
   // const transporter = nodemailer.createTransport({
   //   service:"gmail",
@@ -70,8 +68,6 @@ const register = async (req, res, next) => {
   //     pass:process.env.SENDER_PASSWORD
   //   }
   // })
-
-
 
 const passwordLink = async (req, res,next) => {
   // console.log(req.body);
@@ -305,11 +301,11 @@ const login = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
-  }
+}
 
 
 
-  const about = async (req, res) => {
+const about = async (req, res) => {
     // console.log("about page");
     try {
       const userId = req.user && req.user.id ? req.user.id : null;
@@ -319,10 +315,10 @@ const login = async (req, res, next) => {
     } catch (e) {
       return res.status(500).json({ message: "Error fetching profile" });
     }
-  }
+}
   
   //get user data for contact us and home page
-  const getdata = async (req, res) => {
+const getdata = async (req, res) => {
      //console.log("getdata page");
     //console.log(req.rootUser);
     try {
@@ -333,7 +329,7 @@ const login = async (req, res, next) => {
     } catch (e) {
       return res.status(500).json({ message: "Error fetching data" });
     }
-  }
+}
 
 
 
@@ -376,7 +372,7 @@ const login = async (req, res, next) => {
       console.error("Error updating user profile:", error);
       res.status(500).send({ message: "Error updating profile." });
     }
-  };
+  }
   
 
 
