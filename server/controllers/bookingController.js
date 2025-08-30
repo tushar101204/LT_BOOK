@@ -139,57 +139,31 @@ const createBooking = async (req, res, next) => {
       return res.status(422).json({ error: 'user not found' });
     }
 
-
-    if (eventDateType === "full") {
-      if (!eventDate ) {
-        return res.status(422).json({ error: "Please fill all details" });
-      }
-    }else if(eventDateType === "half") {
+    if(eventDateType === "half") {
       if (!startTime || !endTime || !eventDate ) {
         return res.status(422).json({ error: "Please fill all details" });
       }
-    }else if(eventDateType === "multiple") {
-      if (!eventStartDate || !eventEndDate ) {
-        return res.status(422).json({ error: "Please fill all details" });
-      }else{
-
-        // Check if eventStartDate is before eventEndDate
-        const eventStartDateTime = new Date(eventStartDate);
-        const eventEndDateTime = new Date(eventEndDate);
-        
-        if (eventEndDateTime <= eventStartDateTime) {
-          return res.status(422).json({ error: 'Event end date should be after event start date' });
-        }
-      }
     }
 
-      const nameRegex = /^[\w'.]+\s[\w'.]+\s*[\w'.]*\s*[\w'.]*\s*[\w'.]*\s*[\w'.]*$/;
+    // Validate start and end time
+    const startDateTime = new Date(`2000-01-01T${startTime}:00Z`);
+    const endDateTime = new Date(`2000-01-01T${endTime}:00Z`);
 
-    if (!nameRegex.test(eventManager)) {
-      return res.status(422).json({ error: "Please enter your full Event Coordinator name" });
+    if (endDateTime <= startDateTime) {
+      return res.status(422).json({ error: 'End time should be after start time' });
     }
 
-   
-  
-    
-   // Validate start and end time
-   const startDateTime = new Date(`2000-01-01T${startTime}:00Z`);
-   const endDateTime = new Date(`2000-01-01T${endTime}:00Z`);
-   
-   // Check if end time is after start time
-   if (endDateTime <= startDateTime) {
-     return res.status(422).json({ error: 'End time should be after start time' });
+    // Determine approval state: faculty -> auto approved, student -> request sent
+    var approvedState = "Request Sent";
+    if (user.userType === "faculty") {
+      approvedState = "Approved By Admin";
     }
 
-    var approvedState="Request Sent";
-    console.log(user);
-    if(user.userType==="faculty"){
-      approvedState="Approved By Admin";
-    }
+    // Use user's email if available, otherwise fallback to submitted email
+    const recipientEmail = user.email || email;
 
     const booking = new Booking({
-
-      userId:user._id,
+      userId: user._id,
       institution,
       department,
       eventManager,
@@ -200,29 +174,72 @@ const createBooking = async (req, res, next) => {
       eventEndDate,
       startTime,
       endTime,
-      email,
+      email: recipientEmail,
       bookedHallId: hall._id,
-      bookedHall:hall,
+      bookedHall: hall,
       bookedHallName,
       organizingClub,
-      // eventDetailFile,
-      // eventDetailText,
       phoneNumber,
       altNumber,
-      isApproved:approvedState
+      isApproved: approvedState
     });
 
     await booking.save();
 
-    const html = generateBookingEmailTemplate(eventName, bookedHallName, organizingClub, institution, department, booking._id,eventDate);
-    await mailSender(hall.hallCreater, 'New Booking Request', html);
+    // MAILING LOGIC:
+    // - Faculty: send confirmation to faculty only (approved)
+    // - Student: send "request submitted" to student AND notify admin for approval
+
+    if (user.userType === "faculty") {
+      // send confirmation to faculty only
+      const html = bookingApprovalTemplate(
+        booking.eventName,
+        booking.bookedHallName,
+        booking.organizingClub,
+        booking.institution,
+        booking.department,
+        booking._id
+      );
+      await mailSender(recipientEmail, 'LT Booking Confirmed', html);
+    } else {
+      // student: send "request submitted" email to student
+      const htmlStudent = bookingRequestTemplate(
+        booking.eventName,
+        booking.bookedHallName,
+        booking.organizingClub,
+        booking.institution,
+        booking.department,
+        booking._id,
+        booking.eventDate
+      );
+      await mailSender(recipientEmail, 'Booking Request Submitted', htmlStudent);
+
+      // notify admin to approve (make sure ADMIN_LT_BOOK env var is set)
+      const adminEmail = process.env.ADMIN_LT_BOOK;
+      if (adminEmail) {
+        // you were using generateBookingEmailTemplate previously for admin; reuse it
+        const htmlAdmin = generateBookingEmailTemplate(
+          booking.eventName,
+          booking.bookedHallName,
+          booking.organizingClub,
+          booking.institution,
+          booking.department,
+          booking._id,
+          booking.eventDate
+        );
+        await mailSender(adminEmail, 'New Booking Request - Approval Required', htmlAdmin);
+      } else {
+        console.warn('ADMIN_LT_BOOK not set — admin will not be notified of booking requests.');
+      }
+    }
 
     res.status(201).json({ message: 'Booking created successfully' });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     next(error);
   }
 };
+
 
 
 
@@ -301,15 +318,17 @@ const getBookingAdmin = async (req, res, next) => {
     let statusArray = ["Approved By Admin", "Rejected By Admin", "Request Sent"];
     const currentUser = (req.user && req.user.id) ? await User.findById(req.user.id) : null;
     const adminEmail = currentUser ? currentUser.email : null;
-
+    console.log("adminEmail",adminEmail);
+    console.log("currentUser",currentUser);
     const bookings = await Booking.find({
-       isApproved: { $in: statusArray },
-       $or: [
-         { email: adminEmail},
-         {'bookedHall.hallCreater': adminEmail },
-       ],
+      $or: [
+        { isApproved: { $in: statusArray } },   // condition A
+        { email: adminEmail },                  // condition B
+        { 'bookedHall.hallCreater': adminEmail } // condition C
+      ]
     }).populate('bookedHallId')
       .populate('userId');
+      console.log("bookings",bookings);
     res.json({ bookings });
   } catch (error) {
     next(error);
@@ -334,21 +353,12 @@ const updateBooking = async (req, res, next) => {
       isApproved
     } = req.body;
 
-    // const hall = await Hall.findById(hallId);
-    // if (!hall) {
-    //   return res.status(404).json({ message: 'Hall not found' });
-    // }
-   
-
-
     const booking = await Booking.findByIdAndUpdate(
       bookingId,
       {
-        eventName, eventDate, startTime, endTime,eventDateType,
+        eventName, eventDate, startTime, endTime, eventDateType,
         eventStartDate,
         eventEndDate,
-
-        //  hallId: hall._id,email,
         isApproved,
         rejectionReason,
       },
@@ -359,17 +369,41 @@ const updateBooking = async (req, res, next) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-
-        // Send email based on the updated approval status
+    // Send email based on the updated approval status
+    // NOTE: send approvals/rejections to the booking owner (student/faculty) NOT to admin
+    const recipient = booking.email || (booking.userId && booking.userId.email);
 
     if (isApproved === 'Approved By Admin') {
-      // Send email for approval
-      const html = bookingApprovalTemplate(booking.eventName, booking.bookedHallName, booking.organizingClub, booking.institution, booking.department, bookingId);
-      await mailSender(process.env.ADMIN_LT_BOOK, 'Booking Request Approved', html);
+      // Send email for approval to the booking owner
+      const html = bookingApprovalTemplate(
+        booking.eventName,
+        booking.bookedHallName,
+        booking.organizingClub,
+        booking.institution,
+        booking.department,
+        bookingId
+      );
+      if (recipient) {
+        await mailSender(recipient, 'Booking Request Approved', html);
+      } else {
+        console.warn('No recipient email found for booking approval notification.');
+      }
     } else if (isApproved === 'Rejected By Admin') {
-      // Send email for rejection
-      const html = bookingRejectionTemplate(booking.eventName, booking.bookedHallName, booking.organizingClub, booking.institution, booking.department, bookingId ,rejectionReason);
-      await mailSender(booking.email, 'Booking Request Rejected', html);
+      // Send email for rejection to the booking owner
+      const html = bookingRejectionTemplate(
+        booking.eventName,
+        booking.bookedHallName,
+        booking.organizingClub,
+        booking.institution,
+        booking.department,
+        bookingId,
+        rejectionReason
+      );
+      if (recipient) {
+        await mailSender(recipient, 'Booking Request Rejected', html);
+      } else {
+        console.warn('No recipient email found for booking rejection notification.');
+      }
     }
 
     res.json({ message: 'Booking updated successfully', booking });
@@ -377,6 +411,7 @@ const updateBooking = async (req, res, next) => {
     next(error);
   }
 };
+
 
 
 const deleteBooking = async (req, res, next) => {
