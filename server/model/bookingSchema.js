@@ -89,6 +89,28 @@ const bookingSchema = new mongoose.Schema(
   }
 );
 
+// Compound index to prevent double-booking at database level
+// This ensures no two approved/requested bookings can exist for the same hall, day, and overlapping time
+bookingSchema.index(
+  { 
+    bookedHallId: 1, 
+    day: 1, 
+    startTime: 1, 
+    endTime: 1,
+    isApproved: 1
+  }, 
+  { 
+    unique: false, // Not unique since we want to allow multiple bookings per hall
+    name: 'hall_time_overlap_prevention'
+  }
+);
+
+// Index for efficient querying of bookings by hall and date
+bookingSchema.index({ bookedHallId: 1, eventDate: 1, isApproved: 1 });
+
+// Index for efficient querying of user bookings
+bookingSchema.index({ userId: 1, createdAt: -1 });
+
 // bookingSchema.index({ eventDate: 1 }, { expireAfterSeconds: 86400 });
 const Booking = mongoose.model('Booking', bookingSchema);
 

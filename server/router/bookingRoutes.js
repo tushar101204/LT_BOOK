@@ -16,6 +16,7 @@ router.put('/bookingsEdit/:bookingId',auth, bookingController.updateBooking);
 router.delete('/bookings/:bookingId', bookingController.deleteBooking);
 router.post('/showlt', bookingController.getalllt);
 router.post('/upload',bookingController.upload);
+router.post('/debug-overlap', bookingController.debugOverlap); // Debug endpoint for testing overlap queries
 
 
 module.exports = router;

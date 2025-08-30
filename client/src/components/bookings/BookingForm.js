@@ -140,7 +140,7 @@ const BookingForm = () => {
         },
         { withCredentials: true, headers: { "Content-Type": "application/json" } }
       );
-
+      console.log("response", response);
       const data = response.data;
       if (data.message === "Booking created successfully") {
         toast.success("Booking created successfully!");
@@ -174,7 +174,8 @@ const BookingForm = () => {
       );
 
       const data = response.data;
-      if (data.message === "Lt fetched successfully") {
+      // console.log("data", data);
+      if (data.availableHalls.length > 0) {
         toast.success("Lt fetched successfully!");
         setAvailableLTs(data.availableHalls);
 
