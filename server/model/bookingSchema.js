@@ -10,10 +10,6 @@ const bookingSchema = new mongoose.Schema(
     type: String,
     enum: ["student", "faculty", "admin"],
   },
-  // institution:{
-  //   type: String,
-  //   required: true
-  // },
     day:{
       type: String,
       //required: true

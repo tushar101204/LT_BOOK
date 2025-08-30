@@ -11,17 +11,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     require: true,
   },
-  // institution:{
-  //   type: String,
-  //   required: true
-  // },
-  // department:{
-  //   type: String,
-  //   required: true
-  // },
   phone: {
     type: Number,
-    // require: true,
   },
   userType: {
     type: String,
@@ -44,26 +35,6 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  // messages: [
-  //   {
-  //     name: {
-  //       type: String,
-  //       require: true,
-  //     },
-  //     email: {
-  //       type: String,
-  //       require: true,
-  //     },
-  //     phone: {
-  //       type: Number,
-  //       require: true,
-  //     },
-  //     message: {
-  //       type: String,
-  //       require: true,
-  //     },
-  //   },
-  // ],
   tokens: [
     {
       token: {
@@ -101,7 +72,7 @@ userSchema.methods.generateAuthToken = async function () {
     await this.save();
     return token;
   } catch (error) {
-    // console.log(error);
+    console.log(error);
   }
 };
 // storing message
