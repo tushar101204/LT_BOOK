@@ -27,9 +27,9 @@ require("dotenv").config();
 //   next();
 // });
 
-require("./model/userSchema")
-require("./model/hallSchema")
-require("./model/bookingSchema")
+require("./models/userSchema")
+require("./models/hallSchema")
+require("./models/bookingSchema")
 
 app.use(require("./router/authRoutes"));
 app.use(require("./router/bookingRoutes"));
