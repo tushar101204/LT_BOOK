@@ -1,9 +1,9 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 
-const User = require("../model/userSchema");
+const User = require("../models/userSchema");
 const nodemailer = require("nodemailer")
-const mailSender = require("../utills/mailSender");
+const mailSender = require("../utils/mailSender");
 const resetPasswordTemplate = require("../template/resetPasswordTemplate");
 const verifyEmailTemplate = require("../template/verifyEmailTemplate");
 const jwt = require("jsonwebtoken");
