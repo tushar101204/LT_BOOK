@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const Booking = require('../model/bookingSchema');
 const Hall = require('../model/hallSchema');
 const User = require('../model/userSchema');
+const Reservation = require('../models/reservation');
+const { isoToMinutesSinceMidnightUTC, getSlotNumbersFromISOs, toDateStringYYYYMMDD } = require('../utils/slots');
 const nodemailer = require("nodemailer");
 const xlsx = require('xlsx');
 const { parseISO } = require('date-fns');
@@ -9,6 +11,9 @@ const mailSender = require("../utills/mailSender");
 const bookingRequestTemplate = require("../template/bookingRequestTemplate");
 const bookingApprovalTemplate = require("../template/bookingApprovalTemplate");
 const bookingRejectionTemplate = require("../template/bookingRejectionTemplate");
+
+// Slot duration in minutes
+const SLOT_MINUTES = 15;
 
 
 
@@ -93,23 +98,26 @@ const upload = async (req, res, next) => {
             return null; // Skip if no hall matches the name
           }
 
-          // Return formatted booking object
-          return {
-            eventDateType: "multiple",
-            day: row.day,
-            bookedHallName: row.Lt_name,
-            eventManager: row.teacher_name,
-            designation: row.designation,
-            startTime,
-            endTime,
-            department: row.Branch,
-            batch: row.Batch,
-            eventName: row.course,
-            eventStartDate,
-            eventEndDate,
-            isApproved: "Approved By Admin",
-            bookedHallId,
-          };
+                  // Return formatted booking object
+        return {
+          eventDateType: "multiple",
+          day: row.day,
+          bookedHallName: row.Lt_name,
+          eventManager: row.teacher_name,
+          designation: row.designation,
+          startTime,
+          endTime,
+          department: row.Branch,
+          batch: row.Batch,
+          eventName: row.course,
+          eventStartDate,
+          eventEndDate,
+          isApproved: "Approved By Admin",
+          bookedHallId,
+          // Add slot information for reservation system
+          dateStr: toDateStringYYYYMMDD(eventStartDate),
+          slots: getSlotNumbersFromISOs(startTime, endTime, SLOT_MINUTES)
+        };
         } catch (rowError) {
           console.error("Error processing row:", row, rowError);
           return null;
@@ -127,8 +135,41 @@ const upload = async (req, res, next) => {
       });
     }
 
-    // Save valid bookings to the database
-    await Booking.insertMany(validBookings);
+    // Save valid bookings to the database and create reservations
+    const createdBookings = await Booking.insertMany(validBookings);
+    
+    // Create reservations for all valid bookings
+    const reservationDocs = [];
+    for (let i = 0; i < validBookings.length; i++) {
+      const booking = validBookings[i];
+      const createdBooking = createdBookings[i];
+      
+      if (booking.slots && booking.dateStr) {
+        const bookingReservations = booking.slots.map(slot => ({
+          hallId: booking.bookedHallId,
+          date: booking.dateStr,
+          slot: slot,
+          bookingId: createdBooking._id
+        }));
+        reservationDocs.push(...bookingReservations);
+      }
+    }
+    
+    if (reservationDocs.length > 0) {
+      try {
+        await Reservation.insertMany(reservationDocs, { ordered: true });
+      } catch (reservationError) {
+        // If reservations fail, cleanup the created bookings
+        if (reservationError.code === 11000) {
+          await Booking.deleteMany({ _id: { $in: createdBookings.map(b => b._id) } });
+          return res.status(409).json({ 
+            success: false,
+            error: 'Some slots are already reserved. Please check availability and try again.' 
+          });
+        }
+        throw reservationError;
+      }
+    }
 
     res.status(201).json({ 
       success: true,
@@ -177,6 +218,7 @@ const createBooking = async (req, res, next) => {
         error: 'Hall ID, event name, and event date type are required' 
       });
     }
+
     // Validate hall exists
     const hall = await Hall.findById(bookedHallId);
     if (!hall) {
@@ -184,7 +226,8 @@ const createBooking = async (req, res, next) => {
         success: false,
         error: 'Hall not found' 
       });
-    } 
+    }
+
     // Get current user
     const currentUserId = (req.user && req.user.id) ? req.user.id : userId;
     const user = await User.findById(currentUserId);
@@ -194,6 +237,7 @@ const createBooking = async (req, res, next) => {
         error: 'User not found' 
       });
     }
+
     // Validate half-day booking requirements
     if (eventDateType === "half") {
       if (!startTime || !endTime || !eventDate) {
@@ -203,6 +247,7 @@ const createBooking = async (req, res, next) => {
         });
       }
     }
+
     // Validate start and end time
     if (startTime && endTime) {
       const startDateTime = new Date(`2000-01-01T${startTime}:00Z`);
@@ -215,98 +260,81 @@ const createBooking = async (req, res, next) => {
         });
       }
     }
+
     // Determine approval state: faculty -> auto approved, student -> request sent
     const approvedState = user.userType === "faculty" ? "Approved By Admin" : "Request Sent";
 
     // Use user's email if available, otherwise fallback to submitted email
     const recipientEmail = user.email || email;
 
-    // RESOLVE CONCURRENT BOOKING ISSUE: Use transaction to prevent double-booking
-    const session = await mongoose.startSession();
+    // SLOT-BASED RESERVATION SYSTEM: Prevents double-booking at database level
+    // Compute date string and slot numbers for the requested time
+    const dateStr = toDateStringYYYYMMDD(eventDate || eventStartDate || eventEndDate);
+    
+    if (!startTime || !endTime) {
+      return res.status(422).json({ 
+        success: false,
+        error: 'Start time and end time are required for slot-based booking' 
+      });
+    }
+    
+    // Get slot numbers covering the requested time range
+    const slots = getSlotNumbersFromISOs(startTime, endTime, SLOT_MINUTES);
+    
+    if (slots.length === 0) {
+      return res.status(422).json({ 
+        success: false,
+        error: 'Invalid time range for slot booking' 
+      });
+    }
+    
+    // Build reservation documents for all required slots
+    const reservationDocs = slots.map(slot => ({
+      hallId: hall._id,
+      date: dateStr,
+      slot: slot
+    }));
+    
+    let reservationsCreated = false;
     
     try {
-      await session.withTransaction(async () => {
-        // Simple overlap check to prevent double-booking
-        let hasOverlap = false;
-        
-        if (eventDateType === "multiple" && eventStartDate && eventEndDate) {
-          // For multiple day bookings, check if any existing booking overlaps
-          const existingBookings = await Booking.find({
-            bookedHallId: hall._id,
-            isApproved: { $in: ["Approved By Admin", "Request Sent"] }
-          }).session(session);
-          
-          for (const existing of existingBookings) {
-            if (existing.eventStartDate && existing.eventEndDate) {
-              if (new Date(eventStartDate) <= existing.eventEndDate && new Date(eventEndDate) >= existing.eventStartDate) {
-                hasOverlap = true;
-                break;
-              }
-            }
-          }
-        } else if (eventDate && startTime && endTime) {
-          // For single day bookings, check time overlap
-          const eventDateObj = new Date(eventDate);
-          const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-          const requestedDay = daysOfWeek[eventDateObj.getUTCDay()];
-          
-          const existingBookings = await Booking.find({
-            bookedHallId: hall._id,
-            isApproved: { $in: ["Approved By Admin", "Request Sent"] }
-          }).session(session);
-          
-          for (const existing of existingBookings) {
-            if (existing.day === requestedDay || (!existing.day && existing.eventDate && existing.eventDate.toDateString() === eventDateObj.toDateString())) {
-              if (existing.startTime && existing.endTime && startTime && endTime) {
-                // Simple time string comparison
-                if (startTime < existing.endTime && endTime > existing.startTime) {
-                  hasOverlap = true;
-                  break;
-                }
-              }
-            }
-          }
-        }
-        
-        if (hasOverlap) {
-          throw new Error('Hall is already booked for the requested time slot');
-        }
-        
-        // Create and save the booking
-        const booking = new Booking({
-          userId: user._id,
-          userRole: user.userType,
-          institution,
-          department,
-          eventManager,
-          eventName,
-          eventDateType,
-          eventDate,
-          eventStartDate,
-          eventEndDate,
-          startTime,
-          endTime,
-          email: recipientEmail,
-          bookedHallId: hall._id,
-          bookedHall: hall,
-          bookedHallName,
-          organizingClub,
-          phoneNumber,
-          altNumber,
-          isApproved: approvedState
-        });
-
-        await booking.save({ session });
-        return booking;
-      });
-      // If transaction succeeds, send emails
-      const booking = await Booking.findOne({
+      // Attempt to reserve all slots atomically - unique index prevents race conditions
+      await Reservation.insertMany(reservationDocs, { ordered: true });
+      reservationsCreated = true;
+      
+      // Create and save the booking
+      const booking = new Booking({
         userId: user._id,
+        userRole: user.userType,
+        institution,
+        department,
+        eventManager,
         eventName,
+        eventDateType,
+        eventDate,
+        eventStartDate,
+        eventEndDate,
+        startTime,
+        endTime,
+        email: recipientEmail,
         bookedHallId: hall._id,
-        eventDate: eventDate || eventStartDate
-      }).sort({ createdAt: -1 });
+        bookedHall: hall,
+        bookedHallName,
+        organizingClub,
+        phoneNumber,
+        altNumber,
+        isApproved: approvedState
+      });
 
+      await booking.save();
+      
+      // Link reservations to the booking
+      await Reservation.updateMany(
+        { hallId: hall._id, date: dateStr, slot: { $in: slots } },
+        { $set: { bookingId: booking._id } }
+      );
+      
+      // Send emails based on user type
       if (user.userType === "faculty") {
         // Send confirmation to faculty
         const html = bookingApprovalTemplate(
@@ -354,155 +382,31 @@ const createBooking = async (req, res, next) => {
         message: 'Booking created successfully',
         bookingId: booking._id
       });
-
-    } finally {
-      await session.endSession();
-    }
-
-  } catch (error) {
-    console.error('Error creating booking:', error);
-    
-    // Handle specific error for double-booking
-    if (error.message === 'Hall is already booked for the requested time slot') {
-      return res.status(409).json({ 
-        success: false,
-        error: 'Hall is already booked for the requested time slot. Please choose a different time or hall.' 
-      });
-    }
-    
-    // Handle transaction-related errors
-    if (error.message.includes('Transaction numbers') || error.message.includes('session')) {
-      console.error('Transaction error, attempting fallback approach...');
       
-      // Fallback: Simple availability check without transaction
-      try {
-        let hasOverlap = false;
-        
-        if (eventDateType === "multiple" && eventStartDate && eventEndDate) {
-          // For multiple day bookings, check if any existing booking overlaps
-          const existingBookings = await Booking.find({
-            bookedHallId: hall._id,
-            isApproved: { $in: ["Approved By Admin", "Request Sent"] }
-          });
-          
-          for (const existing of existingBookings) {
-            if (existing.eventStartDate && existing.eventEndDate) {
-              if (new Date(eventStartDate) <= existing.eventEndDate && new Date(eventEndDate) >= existing.eventStartDate) {
-                hasOverlap = true;
-                break;
-              }
-            }
-          }
-        } else if (eventDate && startTime && endTime) {
-          // For single day bookings, check time overlap
-          const eventDateObj = new Date(eventDate);
-          const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-          const requestedDay = daysOfWeek[eventDateObj.getUTCDay()];
-          
-          const existingBookings = await Booking.find({
-            bookedHallId: hall._id,
-            isApproved: { $in: ["Approved By Admin", "Request Sent"] }
-          });
-          
-          for (const existing of existingBookings) {
-            if (existing.day === requestedDay || (!existing.day && existing.eventDate && existing.eventDate.toDateString() === eventDateObj.toDateString())) {
-              if (existing.startTime && existing.endTime && startTime && endTime) {
-                // Simple time string comparison
-                if (startTime < existing.endTime && endTime > existing.startTime) {
-                  hasOverlap = true;
-                  break;
-                }
-              }
-            }
-          }
-        }
-        
-        if (hasOverlap) {
-          return res.status(409).json({ 
-            success: false,
-            error: 'Hall is already booked for the requested time slot. Please choose a different time or hall.' 
-          });
-        }
-        
-        // If no overlaps, create booking without transaction
-        const booking = new Booking({
-          userId: user._id,
-          userRole: user.userType,
-          institution,
-          department,
-          eventManager,
-          eventName,
-          eventDateType,
-          eventDate,
-          eventStartDate,
-          eventEndDate,
-          startTime,
-          endTime,
-          email: recipientEmail,
-          bookedHallId: hall._id,
-          bookedHall: hall,
-          bookedHallName,
-          organizingClub,
-          phoneNumber,
-          altNumber,
-          isApproved: approvedState
-        });
-        
-        await booking.save();
-        
-        // Send emails (same logic as before)
-        if (user.userType === "faculty") {
-          const html = bookingApprovalTemplate(
-            booking.eventName,
-            booking.bookedHallName,
-            booking.organizingClub,
-            booking.institution,
-            booking.department,
-            booking._id
-          );
-          await mailSender(recipientEmail, 'LT Booking Confirmed', html);
-        } else {
-          const htmlStudent = bookingRequestTemplate(
-            booking.eventName,
-            booking.bookedHallName,
-            booking.organizingClub,
-            booking.institution,
-            booking.department,
-            booking._id,
-            booking.eventDate
-          );
-          await mailSender(recipientEmail, 'Booking Request Submitted', htmlStudent);
-          
-          const adminEmail = process.env.ADMIN_LT_BOOK;
-          if (adminEmail) {
-            const htmlAdmin = generateBookingEmailTemplate(
-              booking.eventName,
-              booking.bookedHallName,
-              booking.organizingClub,
-              booking.institution,
-              booking.department,
-              booking._id,
-              booking.eventDate
-            );
-            await mailSender(adminEmail, 'New Booking Request - Approval Required', htmlAdmin);
-          }
-        }
-        
-        return res.status(201).json({ 
-          success: true,
-          message: 'Booking created successfully (fallback mode)',
-          bookingId: booking._id
-        });
-        
-      } catch (fallbackError) {
-        console.error('Fallback approach also failed:', fallbackError);
-        return res.status(500).json({ 
+    } catch (error) {
+      // Handle duplicate key error (slot already reserved)
+      if (error.code === 11000) {
+        return res.status(409).json({ 
           success: false,
-          error: 'Failed to create booking. Please try again later.' 
+          error: 'Slot already reserved. Please choose a different time or hall.' 
         });
       }
+      
+      // If reservations were created but booking failed, cleanup reservations
+      if (reservationsCreated) {
+        await Reservation.deleteMany({ 
+          hallId: hall._id, 
+          date: dateStr, 
+          slot: { $in: slots }, 
+          bookingId: null 
+        });
+      }
+      
+      throw error;
     }
     
+  } catch (error) {
+    console.error('Error creating booking:', error);
     next(error);
   }
 };
@@ -731,6 +635,12 @@ const updateBooking = async (req, res, next) => {
       }
     ).populate('bookedHallId', 'name capacity location');
 
+    // TODO: If admin changes date/time, implement logic to release old reservations 
+    // and attempt to reserve new slots. For now, require client to delete and re-create 
+    // booking if event time changes to avoid complexity.
+    // Recommended behavior: Release old reservations, check new slot availability, 
+    // reserve new slots if available, otherwise return error.
+
     if (!booking) {
       return res.status(404).json({ 
         success: false,
@@ -829,6 +739,9 @@ const deleteBooking = async (req, res, next) => {
       });
     }
 
+    // Clean up associated reservations
+    await Reservation.deleteMany({ bookingId: deletedBooking._id });
+
     res.json({ 
       success: true,
       message: 'Booking deleted successfully',
@@ -877,42 +790,26 @@ const getalllt = async (req, res) => {
       });
     }
 
-    // Define requestedDay from eventDate
-    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const requestedDay = daysOfWeek[eventDateObj.getUTCDay()];
+    // SLOT-BASED AVAILABILITY CHECK: Use reservation system instead of overlap queries
+    const dateStr = toDateStringYYYYMMDD(eventDate);
+    const slots = getSlotNumbersFromISOs(startTime, endTime, SLOT_MINUTES);
+    
+    if (slots.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid time range for slot-based availability check' 
+      });
+    }
 
-    // Find all the booked halls that overlap with the requested time slot
-    const overlapQuery = {
-      isApproved: { $in: ["Approved By Admin", "Request Sent"] }, // Only consider active bookings
-      $or: [
-        // Case 1: If `day` field exists, check for time overlap on the specific day
-        {
-          day: requestedDay,
-          $or: [
-            { startTime: { $lt: endTimeObj, $gte: startTimeObj } },
-            { endTime: { $gt: startTimeObj, $lte: endTimeObj } },
-            { startTime: { $lte: startTimeObj }, endTime: { $gte: endTimeObj } }
-          ]
-        },
-        // Case 2: If `day` field does not exist, check for date and time overlap
-        {
-          day: { $exists: false },
-          eventDate: eventDateObj,
-          $or: [
-            { startTime: { $lt: endTimeObj, $gte: startTimeObj } },
-            { endTime: { $gt: startTimeObj, $lte: endTimeObj } },
-            { startTime: { $lte: startTimeObj }, endTime: { $gte: endTimeObj } }
-          ]
-        }
-      ]
-    };
+    // Find all halls that have reserved slots for the requested time
+    const reservedHallIds = await Reservation.find({ 
+      date: dateStr, 
+      slot: { $in: slots } 
+    }).distinct('hallId');
 
-    // Get the list of all hall IDs that are booked using distinct to avoid loading documents
-    const bookedHallIds = await Booking.distinct('bookedHallId', overlapQuery);
-
-    // Find halls that are not booked in the requested time slot
+    // Find halls that are not reserved in the requested time slot
     const availableHalls = await Hall.find({
-      _id: { $nin: bookedHallIds }
+      _id: { $nin: reservedHallIds }
     })
     .select('name location capacity amenities description') // Only select necessary fields
     .sort({ name: 1 }) // Sort alphabetically for better UX
@@ -934,7 +831,7 @@ const getalllt = async (req, res) => {
       message: "Available halls fetched successfully",
       requestedDate: eventDate,
       requestedTime: `${startTime} - ${endTime}`,
-      requestedDay
+      requestedSlots: slots
     });
   } catch (error) {
     console.error('Error fetching available halls:', error);
@@ -947,12 +844,12 @@ const getalllt = async (req, res) => {
 };
 
 
-// Debug function to test overlap queries
+// Debug function to test slot-based reservation system
 const debugOverlap = async (req, res) => {
   try {
     const { eventDate, startTime, endTime, bookedHallId } = req.body;
     
-    console.log("Debug overlap request:", { eventDate, startTime, endTime, bookedHallId });
+    console.log("Debug slot reservation request:", { eventDate, startTime, endTime, bookedHallId });
     
     if (!eventDate || !startTime || !endTime || !bookedHallId) {
       return res.status(400).json({
@@ -961,51 +858,56 @@ const debugOverlap = async (req, res) => {
       });
     }
     
-    const eventDateObj = new Date(eventDate);
-    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const requestedDay = daysOfWeek[eventDateObj.getUTCDay()];
+    // Convert to slot-based system
+    const dateStr = toDateStringYYYYMMDD(eventDate);
+    const slots = getSlotNumbersFromISOs(startTime, endTime, SLOT_MINUTES);
     
-    // Simple overlap check using existing data format
+    if (slots.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid time range for slot-based system'
+      });
+    }
+    
+    // Check existing reservations for the requested slots
+    const existingReservations = await Reservation.find({
+      hallId: bookedHallId,
+      date: dateStr,
+      slot: { $in: slots }
+    }).populate('bookingId');
+    
+    // Check existing bookings for the same hall/date
     const existingBookings = await Booking.find({
       bookedHallId: bookedHallId,
       isApproved: { $in: ["Approved By Admin", "Request Sent"] }
     });
     
-    let hasOverlap = false;
-    let overlappingDetails = [];
-    
-    for (const existing of existingBookings) {
-      if (existing.day === requestedDay || (!existing.day && existing.eventDate && existing.eventDate.toDateString() === eventDateObj.toDateString())) {
-        if (existing.startTime && existing.endTime && startTime && endTime) {
-          // Simple time string comparison
-          if (startTime < existing.endTime && endTime > existing.startTime) {
-            hasOverlap = true;
-            overlappingDetails.push({
-              id: existing._id,
-              day: existing.day,
-              eventDate: existing.eventDate,
-              startTime: existing.startTime,
-              endTime: existing.endTime,
-              isApproved: existing.isApproved
-            });
-          }
-        }
-      }
-    }
-    
     res.json({
       success: true,
-      hasOverlap,
-      overlappingDetails,
-      count: overlappingDetails.length,
-      requestedDay,
       requestedDate: eventDate,
       requestedTime: `${startTime} - ${endTime}`,
-      totalBookingsChecked: existingBookings.length
+      requestedSlots: slots,
+      dateStr: dateStr,
+      slotMinutes: SLOT_MINUTES,
+      existingReservations: existingReservations.map(r => ({
+        slot: r.slot,
+        bookingId: r.bookingId,
+        createdAt: r.createdAt
+      })),
+      existingBookings: existingBookings.map(b => ({
+        id: b._id,
+        eventName: b.eventName,
+        startTime: b.startTime,
+        endTime: b.endTime,
+        isApproved: b.isApproved
+      })),
+      reservationCount: existingReservations.length,
+      bookingCount: existingBookings.length,
+      slotsAvailable: slots.length - existingReservations.length
     });
     
   } catch (error) {
-    console.error('Debug overlap error:', error);
+    console.error('Debug slot reservation error:', error);
     res.status(500).json({
       success: false,
       error: error.message
