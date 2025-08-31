@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../model/userSchema");
+const User = require("../models/userSchema");
 
 // Extract token from header/cookie/body
 function extractToken(req) {
