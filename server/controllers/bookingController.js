@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
-const Booking = require('../model/bookingSchema');
-const Hall = require('../model/hallSchema');
-const User = require('../model/userSchema');
+const Booking = require('../models/bookingSchema');
+const Hall = require('../models/hallSchema');
+const User = require('../models/userSchema');
 const Reservation = require('../models/reservation');
 const { isoToMinutesSinceMidnightUTC, getSlotNumbersFromISOs, toDateStringYYYYMMDD } = require('../utils/slots');
 const nodemailer = require("nodemailer");
 const xlsx = require('xlsx');
 const { parseISO } = require('date-fns');
-const mailSender = require("../utills/mailSender");
+const mailSender = require("../utils/mailSender");
 const bookingRequestTemplate = require("../template/bookingRequestTemplate");
 const bookingApprovalTemplate = require("../template/bookingApprovalTemplate");
 const bookingRejectionTemplate = require("../template/bookingRejectionTemplate");
