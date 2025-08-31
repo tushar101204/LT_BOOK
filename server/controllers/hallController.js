@@ -1,5 +1,5 @@
-const Hall = require('../model/hallSchema');
-const User = require("../model/userSchema");
+const Hall = require('../models/hallSchema');
+const User = require("../models/userSchema");
 
 const createHall = async (req, res, next) => {
   try {
