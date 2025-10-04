@@ -13,7 +13,7 @@ function extractToken(req) {
   return fromHeader || fromCookie || fromBody || null;
 }
 
-// Core auth middleware similar to the shared example
+// Core auth middleware similar to the shared example hi
 async function auth(req, res, next) {
   try {
     const token = extractToken(req);
